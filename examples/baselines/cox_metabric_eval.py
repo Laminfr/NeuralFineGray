@@ -1,42 +1,12 @@
 import numpy as np
 import pandas as pd
-from sklearn.preprocessing import StandardScaler
-from sklearn.model_selection import train_test_split
 from lifelines import CoxPHFitter
 from lifelines.utils import concordance_index
-from pycox.datasets import metabric
 from sksurv.metrics import integrated_brier_score, concordance_index_censored
 from sksurv.util import Surv
 
-
-def load_and_preprocess_data():
-    """Load METABRIC dataset and preprocess."""
-    df = metabric.read_df()
-    
-    # Split features and targets
-    X = df.drop(['duration', 'event'], axis=1)
-    t = df['duration']
-    e = df['event']
-    
-    # Train/val split
-    X_train, X_val, t_train, t_val, e_train, e_val = train_test_split(
-        X, t, e, test_size=0.2, random_state=42, stratify=e
-    )
-    
-    # Standardize features
-    scaler = StandardScaler()
-    X_train = pd.DataFrame(
-        scaler.fit_transform(X_train),
-        columns=X_train.columns,
-        index=X_train.index
-    )
-    X_val = pd.DataFrame(
-        scaler.transform(X_val),
-        columns=X_val.columns,
-        index=X_val.index
-    )
-    
-    return X_train, X_val, t_train, t_val, e_train, e_val
+# Import the shared data loader
+from .data_loader import load_and_preprocess_data
 
 
 def train_cox_model(X_train, t_train, e_train):
