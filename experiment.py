@@ -371,3 +371,68 @@ class DeSurvExperiment(NFGExperiment):
                 lr = lr, val_data = (x_val, t_val, e_val))
         
         return model
+
+class TabPFNExperiment:
+    """
+    A experiment class to evaluate TabPFN embeddings or raw tabular data.
+
+    Usage:
+        X, y = load_some_dataset()
+        estimator = e.g. LogisticRegression()
+        exp = TabPFNExperiment(X, y, estimator, use_embeddings=True, test_size=0.5)
+        exp.fit()
+        y_pred = exp.predict()
+
+    Parameters:
+        X (np.ndarray): Feature matrix of shape (n_samples, n_features)
+        y (np.ndarray): Target labels of shape (n_samples,)
+        estimator (sklearn-like object): A downstream model implementing 'fit' and 'predict'
+        use_embeddings (bool): If True, extract TabPFN embeddings to use as input for the estimator
+                               If False, use raw features
+        test_size (float): Fraction of data to use as test set (default: 0.5).
+
+    Attributes:
+        X_train, X_test, y_train, y_test: Training and test splits.
+        model (TabPFNClassifier): The TabPFN model used for embedding extraction.
+        embedder (TabPFNEmbedding or None): Embedding extractor
+        train_embeddings, test_embeddings (np.ndarray): Precomputed embeddings for train/test sets.
+    """
+    def __init__(self, X, y, estimator, use_embeddings=True, test_size=0.5):
+        from sklearn.model_selection import train_test_split
+        from tabpfn import TabPFNClassifier
+        from tabpfn_extensions import TabPFNEmbedding
+        self.estimator = estimator
+        self.use_embeddings = use_embeddings
+        self.X_train, self.X_test, self.y_train, self.y_test = train_test_split(X, y, test_size=test_size, random_state=42)
+        self.model = TabPFNClassifier(n_estimators=1)
+        if self.use_embeddings:
+            self.embedder = TabPFNEmbedding(tabpfn_clf=self.model, n_fold=0)
+            self.train_embeddings = self.embedder.get_embeddings(
+                self.X_train,
+                self.y_train,
+                self.X_test,
+                data_source="train",
+            )
+            self.test_embeddings = self.embedder.get_embeddings(
+                self.X_train,
+                self.y_train,
+                self.X_test,
+                data_source="test",
+            )
+        else:
+            self.embedder = None
+
+
+    def fit(self):
+        if self.use_embeddings:
+            X_emb = self.train_embeddings[0]
+        else:
+            X_emb = self.X_train
+        self.estimator.fit(X_emb, self.y_train)
+
+    def predict(self):
+        if self.use_embeddings:
+            X_emb = self.test_embeddings[0]
+        else:
+            X_emb = self.X_test
+        return self.estimator.predict(X_emb)
