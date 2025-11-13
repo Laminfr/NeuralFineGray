@@ -7,11 +7,18 @@ import numpy as np
 from tabulate import tabulate
 
 # Import all baseline models
-from .data_loader import load_and_preprocess_data
-from .cox_metabric_eval import train_cox_model, evaluate_model as evaluate_cox
-from .train_xgboost import train_xgboost_model, evaluate_xgboost_model
-from .DeepSurv import train_deepsurv_model, evaluate_deepsurv_model
-from .RSF import train_rsf_model, evaluate_rsf_model
+try:
+    from .data_loader import load_and_preprocess_data
+    from .cox_metabric_eval import train_cox_model, evaluate_model as evaluate_cox
+    from .train_xgboost import train_xgboost_model, evaluate_xgboost_model
+    from .DeepSurv import train_deepsurv_model, evaluate_deepsurv_model
+    from .RSF import train_rsf_model, evaluate_rsf_model
+except ImportError:
+    from data_loader import load_and_preprocess_data
+    from cox_metabric_eval import train_cox_model, evaluate_model as evaluate_cox
+    from train_xgboost import train_xgboost_model, evaluate_xgboost_model
+    from DeepSurv import train_deepsurv_model, evaluate_deepsurv_model
+    from RSF import train_rsf_model, evaluate_rsf_model
 
 
 def run_comparison(dataset='METABRIC', normalize=True, test_size=0.2, random_state=42):
@@ -51,6 +58,8 @@ def run_comparison(dataset='METABRIC', normalize=True, test_size=0.2, random_sta
     start_time = time.time()
     try:
         cph = train_cox_model(X_train, t_train, e_train)
+        print("\nModel Summary:")
+        print(cph.summary[['coef', 'exp(coef)', 'p']])
         metrics_cox = evaluate_cox(cph, X_train, X_val, t_train, t_val, e_train, e_val)
         train_time = time.time() - start_time
         results.append({
@@ -63,6 +72,8 @@ def run_comparison(dataset='METABRIC', normalize=True, test_size=0.2, random_sta
         print(f"✓ Completed in {train_time:.1f}s")
     except Exception as e:
         print(f"✗ Failed: {e}")
+        import traceback
+        traceback.print_exc()
         results.append({"Model": "Cox PH", "C-index (train)": "Error", "C-index (val)": "Error", 
                        "IBS (val)": "Error", "Time (s)": "-"})
     
@@ -85,6 +96,8 @@ def run_comparison(dataset='METABRIC', normalize=True, test_size=0.2, random_sta
         print(f"✓ Completed in {train_time:.1f}s")
     except Exception as e:
         print(f"✗ Failed: {e}")
+        import traceback
+        traceback.print_exc()
         results.append({"Model": "XGBoost", "C-index (train)": "Error", "C-index (val)": "Error",
                        "IBS (val)": "Error", "Time (s)": "-"})
     
@@ -107,6 +120,8 @@ def run_comparison(dataset='METABRIC', normalize=True, test_size=0.2, random_sta
         print(f"✓ Completed in {train_time:.1f}s")
     except Exception as e:
         print(f"✗ Failed: {e}")
+        import traceback
+        traceback.print_exc()
         results.append({"Model": "DeepSurv", "C-index (train)": "Error", "C-index (val)": "Error",
                        "IBS (val)": "Error", "Time (s)": "-"})
     
@@ -129,6 +144,8 @@ def run_comparison(dataset='METABRIC', normalize=True, test_size=0.2, random_sta
         print(f"✓ Completed in {train_time:.1f}s")
     except Exception as e:
         print(f"✗ Failed: {e}")
+        import traceback
+        traceback.print_exc()
         results.append({"Model": "RSF", "C-index (train)": "Error", "C-index (val)": "Error",
                        "IBS (val)": "Error", "Time (s)": "-"})
     
@@ -137,7 +154,8 @@ def run_comparison(dataset='METABRIC', normalize=True, test_size=0.2, random_sta
     print("SUMMARY OF RESULTS")
     print("="*70)
     print(tabulate(results, headers="keys", tablefmt="grid"))
-    print("\nNote: C-index ↑ is better, IBS ↓ is better")
+    print("\nNote: All metrics computed using NeuralFineGray framework")
+    print("      C-index ↑ is better, IBS ↓ is better")
     print("="*70)
 
 

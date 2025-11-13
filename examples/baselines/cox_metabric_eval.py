@@ -1,12 +1,18 @@
 import numpy as np
 import pandas as pd
 from lifelines import CoxPHFitter
-from lifelines.utils import concordance_index
-from sksurv.metrics import integrated_brier_score, concordance_index_censored
-from sksurv.util import Surv
 
 # Import the shared data loader
-from .data_loader import load_and_preprocess_data
+try:
+    from .data_loader import load_and_preprocess_data
+except ImportError:
+    from data_loader import load_and_preprocess_data
+
+# Import metrics from neuralfg repository
+import sys
+sys.path.insert(0, '/vol/miltank/users/sajb/Project/NeuralFineGray')
+from metrics.calibration import integrated_brier_score
+from metrics.discrimination import truncated_concordance_td
 
 
 def train_cox_model(X_train, t_train, e_train):
@@ -23,29 +29,57 @@ def train_cox_model(X_train, t_train, e_train):
     return cph
 
 
-def evaluate_model(cph, X_train, X_val, t_train, t_val, e_train, e_val):
-    """Evaluate Cox model using scikit-survival metrics."""
+def concordance_index_from_risk_scores(e, t, risk_scores, tied_tol=1e-8):
+    """
+    Compute C-index directly from risk scores (for Cox-like models).
+    Higher risk score should correspond to higher risk (shorter survival).
+    """
+    event = e.values.astype(bool) if hasattr(e, 'values') else e.astype(bool)
+    t = t.values if hasattr(t, 'values') else t
+    n_events = event.sum()
     
-    # --- C-index using lifelines (on full validation set) ---
-    c_index_train = cph.score(
-        pd.concat([X_train, t_train.rename('duration'), e_train.rename('event')], axis=1),
-        scoring_method="concordance_index"
-    )
-    c_index_val = cph.score(
-        pd.concat([X_val, t_val.rename('duration'), e_val.rename('event')], axis=1),
-        scoring_method="concordance_index"
-    )
+    if n_events == 0:
+        return np.nan
+    
+    concordant = 0
+    permissible = 0
+    
+    for i in range(len(t)):
+        if not event[i]:
+            continue
+            
+        # Compare with all samples at risk at time t[i]
+        at_risk = t > t[i]
+        
+        # Higher risk score means higher risk (shorter time to event)
+        concordant += (risk_scores[at_risk] < risk_scores[i]).sum()
+        concordant += 0.5 * (np.abs(risk_scores[at_risk] - risk_scores[i]) <= tied_tol).sum()
+        permissible += at_risk.sum()
+    
+    if permissible == 0:
+        return np.nan
+    
+    return concordant / permissible
+
+
+def evaluate_model(cph, X_train, X_val, t_train, t_val, e_train, e_val):
+    """Evaluate Cox model using NeuralFineGray metrics."""
+    
+    # Get risk scores (partial hazard = exp(X * beta))
+    risk_scores_train = cph.predict_partial_hazard(X_train).values.flatten()
+    risk_scores_val = cph.predict_partial_hazard(X_val).values.flatten()
+    
+    # --- C-index using risk scores directly ---
+    c_index_train = concordance_index_from_risk_scores(e_train, t_train, risk_scores_train)
+    c_index_val = concordance_index_from_risk_scores(e_val, t_val, risk_scores_val)
     
     # --- Integrated Brier Score ---
-    # CRITICAL: Filter validation samples to only include times within training range
-    # This is because the censoring distribution is estimated from training data
+    # Filter validation set to be within the time range of the training data
     max_time_train = t_train.max()
-    
-    # Filter validation set
-    valid_mask = t_val < max_time_train
+    valid_mask = t_val.values < max_time_train
+    t_val_filtered = t_val.values[valid_mask]
+    e_val_filtered = e_val.values[valid_mask]
     X_val_filtered = X_val[valid_mask]
-    t_val_filtered = t_val[valid_mask]
-    e_val_filtered = e_val[valid_mask]
     
     print(f"Validation samples for IBS: {len(t_val_filtered)}/{len(t_val)} " +
           f"({100*len(t_val_filtered)/len(t_val):.1f}%)")
@@ -58,20 +92,15 @@ def evaluate_model(cph, X_train, X_val, t_train, t_val, e_train, e_val):
             "ibs_val": np.nan
         }
     
-    # Create structured arrays
-    y_train = Surv.from_arrays(event=e_train.values.astype(bool), time=t_train.values)
-    y_val_filtered = Surv.from_arrays(event=e_val_filtered.values.astype(bool), 
-                                      time=t_val_filtered.values)
-    
-    # Create time grid within safe range
+    # Create safe time grid
     max_time_safe = max_time_train * 0.95
-    event_times = t_val_filtered[e_val_filtered.astype(bool)].values
+    event_times = t_val_filtered[e_val_filtered > 0]
     event_times = event_times[event_times < max_time_safe]
     
     if len(event_times) > 50:
         time_grid = np.quantile(event_times, np.linspace(0.1, 0.9, 50))
     else:
-        time_grid = np.linspace(t_val_filtered.min() + 1, max_time_safe, 50)
+        time_grid = np.linspace(max(t_val_filtered.min(), 1), max_time_safe, 50)
     
     time_grid = np.unique(time_grid)
     
@@ -82,13 +111,30 @@ def evaluate_model(cph, X_train, X_val, t_train, t_val, e_train, e_val):
     surv_funcs = cph.predict_survival_function(X_val_filtered, times=time_grid)
     surv_probs = surv_funcs.T.values
     
-    # Calculate IBS
-    ibs = integrated_brier_score(y_train, y_val_filtered, surv_probs, time_grid)
+    # Convert survival to cumulative incidence (risk) for the IBS metric
+    risk_predicted_val = 1 - surv_probs
+    
+    # Prepare IPCW estimator (Kaplan-Meier on censoring distribution)
+    km = (e_train.values, t_train.values)
+    
+    # For single event survival analysis, competing_risk=1 represents THE event
+    competing_risk = 1
+    
+    # Calculate IBS using NeuralFineGray metric
+    ibs_val, km = integrated_brier_score(
+        e_val_filtered.astype(int),
+        t_val_filtered,
+        risk_predicted_val,
+        time_grid,
+        t_eval=time_grid,
+        km=km,
+        competing_risk=competing_risk
+    )
     
     return {
         "c_index_train": c_index_train,
         "c_index_val": c_index_val,
-        "ibs_val": ibs
+        "ibs_val": ibs_val
     }
 
 
@@ -128,8 +174,9 @@ def main():
     else:
         print(f"IBS (val):       N/A (no valid samples)")
     print("="*50)
-    print("\nNote: C-index computed on full validation set,")
-    print("      IBS computed on validation samples with time < max(train time)")
+    print("\nNote: C-index computed directly from risk scores")
+    print("      IBS computed using NeuralFineGray metrics")
+    print("      Validation IBS computed on samples with time < max(train time)")
 
 
 if __name__ == "__main__":

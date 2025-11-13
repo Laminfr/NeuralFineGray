@@ -11,19 +11,18 @@ Training Random Survival Forest model...
 Training RSF with 200 trees...
 
 Evaluating model...
-C-index (train): 0.7655
-C-index (val):   0.6249
-Validation samples for IBS: 380/381 (99.7%)
+Validation samples for evaluation: 380/381 (99.7%)
 Time grid range: [24.58, 192.15]
 Max time (train): 351.00
 
 ==================================================
 RANDOM SURVIVAL FOREST RESULTS
 ==================================================
-C-index (train): 0.7655
-C-index (val):   0.6249
-IBS (val):       0.1850
+C-index (train): 0.7531
+C-index (val):   0.6160
+IBS (val):       0.1845
 ==================================================
 
-Note: C-index computed on full validation set,
-      IBS computed on validation samples with time < max(train time)
+Note: C-index and IBS computed using NeuralFineGray metrics
+      for single event survival analysis (competing_risk=1)
+      Validation metrics computed on samples with time < max(train time)
