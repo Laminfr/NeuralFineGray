@@ -4,6 +4,7 @@ from sklearn.impute import SimpleImputer
 from pycox import datasets
 import pandas as pd
 import numpy as np
+import os
 
 EPS = 1e-8
 
@@ -27,6 +28,32 @@ def load_dataset(dataset='SUPPORT', path = './', normalize = True, **kwargs):
         df = pd.read_csv('https://raw.githubusercontent.com/chl8856/DeepHit/master/sample%20data/SYNTHETIC/synthetic_comprisk.csv')
         df = df.drop(columns = ['true_time', 'true_label']).rename(columns = {'label': 'event', 'time': 'duration'})
         df['duration'] += EPS # Avoid problem of the minimum value 0
+    elif dataset == 'PBC':
+        script_dir = os.path.dirname(os.path.abspath(__file__))
+        filepath = os.path.join(script_dir, "DOC-10026921.txt")
+        df = pd.read_csv(filepath,
+                         sep=r"\s+",  # split on any whitespace
+                         header=None)
+        column_names = [
+            "case_number", "duration", "status", "drug", "age_days", "sex",
+            "ascites", "hepatomegaly", "spiders", "edema", "bilirubin",
+            "cholesterol", "albumin", "urine_copper", "alk_phosphatase",
+            "sgot", "triglycerides", "platelets", "prothrombin_time", "histologic_stage"
+        ]
+        df.columns = column_names
+        df = df.replace(".", np.nan)
+        df = df.dropna(axis=1)
+        df["event"] = (df["status"] == 2)
+        df = df.apply(pd.to_numeric)
+        df['duration'] += EPS  # Avoid problem of the minimum value 0
+    elif dataset == 'SUPPORT':
+        df = datasets.support.read_df()
+        df.columns = [
+            'age', 'sex', 'race', 'number_comorbidities', 'diabetes', 'dementia',
+            'cancer', 'mean_bp', 'heart_rate', 'respiration_rate', 'temperature',
+            'white_blood_cell_count', 'serums_sodium', 'serums_creatinine', 'duration', 'event'
+        ]
+        df['duration'] += EPS  # Avoid problem of the minimum value 0
     else:
         return load_dsm(dataset, normalize = normalize, **kwargs)
 

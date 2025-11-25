@@ -29,6 +29,9 @@ def load_and_preprocess_data(dataset='METABRIC', normalize=True, test_size=0.2,
     X, t, e, feature_names = load_dataset(dataset=dataset, normalize=normalize)
     
     # Train/val split
+    if dataset=='PBC':
+        test_size = 0.4
+        print("PBC is such a small dataset that test_size has to be at least 0.3 to have enough data points in y_val")
     X_train, X_val, t_train, t_val, e_train, e_val = train_test_split(
         X, t, e, test_size=test_size, random_state=random_state, stratify=e
     )

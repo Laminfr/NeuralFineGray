@@ -232,11 +232,10 @@ def baselines_evaluate_embeddings(dataset='METABRIC', normalize=True, test_size=
     return results
 
 if __name__ == "__main__":
-    raw_results = baselines_evaluate_embeddings(embeddings_flag=None)
-    emb_results = baselines_evaluate_embeddings(embeddings_flag="emb")
-    dummy_results = baselines_evaluate_embeddings(embeddings_flag="dummy")
-    combi_results = baselines_evaluate_embeddings(embeddings_flag="combi")
-
+    raw_results = baselines_evaluate_embeddings(embeddings_flag=None, dataset='SUPPORT')
+    emb_results = baselines_evaluate_embeddings(embeddings_flag="emb", dataset='SUPPORT')
+    dummy_results = baselines_evaluate_embeddings(embeddings_flag="dummy", dataset='SUPPORT')
+    combi_results = baselines_evaluate_embeddings(embeddings_flag="combi", dataset='SUPPORT')
 
     # Combine results with a method column
     def combine_results(results_dicts, method_name):
