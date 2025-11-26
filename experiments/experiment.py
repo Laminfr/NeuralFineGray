@@ -8,6 +8,8 @@ import time
 import os
 import io
 
+from coxph.coxph_api import CoxPHFG
+
 class CPU_Unpickler(pickle.Unpickler):
     def find_class(self, module, name):
         if module == 'torch.storage' and name == '_load_from_bytes':
@@ -225,7 +227,7 @@ class Experiment():
 class DSMExperiment(Experiment):
 
     def _fit_(self, x, t, e, x_val, t_val, e_val, hyperparameter, cause_specific):  
-        from dsm import DeepSurvivalMachines
+        from DeepSurvivalMachines.dsm import DeepSurvivalMachines
 
         epochs = hyperparameter.pop('epochs', 1000)
         batch = hyperparameter.pop('batch', 250)
@@ -373,3 +375,43 @@ class DeSurvExperiment(NFGExperiment):
                 lr = lr, val_data = (x_val, t_val, e_val))
         
         return model
+    
+class CoxExperiment(Experiment):
+    def _fit_(self, x, t, e, x_val, t_val, e_val, hyperparameter, cause_specific=False):
+        pen = hyperparameter.pop("penalizer", 0.01)
+        model = CoxPHFG(penalizer=pen)
+        model.fit(x = x,
+                  t = t, 
+                  e = e,
+                  val_data = (x_val, t_val, e_val))
+        return model
+
+    def _nll_(self, model,*args, **kwargs):
+        return model.model.log_likelihood_
+
+    def _predict_(self, model, x, r, index):
+        X = pd.DataFrame(x)
+        times = np.asarray(self.times, dtype=float)
+        S = model.model.predict_survival_function(X, times=times)
+        S = S.T
+        assert len(index) == S.shape[0], f"index len {len(index)} != S rows {S.shape[0]}"
+        S.index = index
+        S.columns = pd.MultiIndex.from_product([[r], times])
+        return S
+
+class RSFExperiment(Experiment):
+    def _fit_(self, x, t, e, x_val, t_val, e_val, hyperparameter, cause_specific=False):
+        pass
+    def _nll_(self, model, x_dev, t_dev, e_dev, e_train, t_train):
+        pass
+    def _predict_(self, model, x, r, index):
+        pass
+
+class XGBoostExperiment(Experiment):
+    def _fit_(self, x, t, e, x_val, t_val, e_val, hyperparameter, cause_specific=False):
+        pass
+    def _nll_(self, model, x_dev, t_dev, e_dev, e_train, t_train):
+        pass
+    def _predict_(self, model, x, r, index):
+        pass
+
