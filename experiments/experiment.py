@@ -231,7 +231,7 @@ class Experiment():
 class DSMExperiment(Experiment):
 
     def _fit_(self, x, t, e, x_val, t_val, e_val, hyperparameter, cause_specific):  
-        from dsm import DeepSurvivalMachines
+        from auton_survival.models.dsm import DeepSurvivalMachines
 
         epochs = hyperparameter.pop('epochs', 1000)
         batch = hyperparameter.pop('batch', 250)
