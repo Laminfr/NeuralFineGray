@@ -1,5 +1,5 @@
 import numpy as np
-import xgb as xgb
+import XGB as xgb
 from lifelines import KaplanMeierFitter
 
 from metrics.calibration import integrated_brier_score as nfg_integrated_brier

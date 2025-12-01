@@ -5,6 +5,8 @@ from pycox import datasets
 import pandas as pd
 import numpy as np
 import os
+from pathlib import Path
+import regex as re
 
 EPS = 1e-8
 
@@ -22,10 +24,21 @@ def load_dataset(dataset='SUPPORT', path = './', normalize = True, **kwargs):
         df = df.drop([c for c in df.columns if 'true' in c], axis = 'columns')
     elif dataset == 'SEER':
         dir = os.path.dirname(os.path.abspath(__file__))
-        path = os.path.join(dir, "seer", "seernfg.csv")
-        df = pd.read_csv(path, dtype={3: "string"})
-        df = process_seer(df)
-        df['duration'] += EPS # Avoid problem of the minimum value 0
+        path = Path(os.path.join(dir, "seer", "seernfg_cleaned.csv"))
+        if path.is_file():
+            df = pd.read_csv(path)
+        else:
+            path = os.path.join(dir, "seer", "seernfg.csv")
+            df = pd.read_csv(path, dtype={3: "string"})
+            print(f"originally had {len(df)} rows")
+            df = process_seer(df)
+            df['duration'] += EPS # Avoid problem of the minimum value 0
+            df.columns = [re.sub(r"[<>\[\]]", "_", str(col)).strip() for col in df.columns]
+            for col in df.columns:
+                if pd.api.types.is_numeric_dtype(df[col]):
+                    df[col] = pd.to_numeric(df[col], errors='coerce', downcast='float')
+            print(f"now has {len(df)} rows")
+            df.to_csv(os.path.join(dir, "seer", "seernfg_cleaned.csv"), index=False)
     elif dataset == 'SYNTHETIC_COMPETING':
         df = pd.read_csv('https://raw.githubusercontent.com/chl8856/DeepHit/master/sample%20data/SYNTHETIC/synthetic_comprisk.csv')
         df = df.drop(columns = ['true_time', 'true_label']).rename(columns = {'label': 'event', 'time': 'duration'})
@@ -66,6 +79,7 @@ def load_dataset(dataset='SUPPORT', path = './', normalize = True, **kwargs):
            covariates.columns
 
 def process_seer(df):
+    print("process_seer_dataset")
     # Remove multiple visits
     df = df.groupby('Patient ID').first().drop(columns= ['Site recode ICD-O-3/WHO 2008']).copy()
 

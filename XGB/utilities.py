@@ -1,5 +1,5 @@
 import numpy as np
-import xgb as xgb
+import xgboost as xgb
 
 from lifelines import KaplanMeierFitter
 # Import the shared data loader
