@@ -8,23 +8,24 @@ import matplotlib.pyplot as plt
 
 warnings.filterwarnings("ignore", message="TypedStorage is deprecated")
 
-from ..datasets.data_loader import load_and_preprocess_data
-from ..coxph.utilities import train_cox_model, evaluate_model as evaluate_cox
-from ..xgboost.utilities import train_xgboost_model, evaluate_xgboost_model
-from ..deepsurv.utilities import train_deepsurv_model, evaluate_deepsurv_model
-from ..rsf.utilities import train_rsf_model, evaluate_rsf_model
-from ..tfm.TabPFN.extract_embeddings import get_embeddings_tabpfn
+from datasets.data_loader import load_and_preprocess_data
+from coxph.utilities import train_cox_model, evaluate_model as evaluate_cox
+from xgboost.utilities import train_xgboost_model, evaluate_xgboost_model
+from deepsurv.utilities import train_deepsurv_model, evaluate_deepsurv_model
+from rsf.utilities import train_rsf_model, evaluate_rsf_model
+from tfm.TabPFN.extract_embeddings import get_embeddings_tabpfn
 
-def find_repo_root():
-    from pathlib import Path
-    start = start or Path(__file__).resolve()
-    for parent in [start] + list(start.parents):
-        if (parent / ".git").exists():
-            return parent
-    raise FileNotFoundError("No .git folder found in any parent directory")
+# def find_repo_root():
+#     from pathlib import Path
+#     start = None
+#     start = start or Path(__file__).resolve()
+#     for parent in [start] + list(start.parents):
+#         if (parent / ".git").exists():
+#             return parent
+#     raise FileNotFoundError("No .git folder found in any parent directory")
 
-sys.path.append(find_repo_root())
-sys.path.append(find_repo_root()+ "/DeepSurvivalMachines/")
+# sys.path.append(find_repo_root())
+# sys.path.append(find_repo_root()+ "/DeepSurvivalMachines/")
 
 
 

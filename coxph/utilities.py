@@ -22,7 +22,6 @@ def train_cox_model(X_train, T_train, E_train, penalizer=0.01):
     
     return cph
 
-
 def concordance_index_from_risk_scores(e, t, risk_scores, tied_tol=1e-8):
     """
     Compute C-index directly from risk scores (for Cox-like models).
@@ -54,7 +53,6 @@ def concordance_index_from_risk_scores(e, t, risk_scores, tied_tol=1e-8):
         return np.nan
     
     return concordant / permissible
-
 
 def evaluate_model(cph, X_train, X_val, t_train, t_val, e_train, e_val):
     """Evaluate Cox model using NeuralFineGray metrics."""
@@ -133,7 +131,6 @@ def evaluate_model(cph, X_train, X_val, t_train, t_val, e_train, e_val):
     }
 
 def summary_output(model, X_train, t_train, e_train, X_val, t_val, e_val, eval_params):
-    print("Loading and preprocessing METABRIC dataset...")
     print(f"Training samples: {len(X_train)}")
     print(f"Validation samples: {len(X_val)}")
     print(f"Features: {X_train.shape[1]}")

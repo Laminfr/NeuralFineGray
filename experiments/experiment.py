@@ -1,5 +1,11 @@
 from sklearn.preprocessing import StandardScaler
-from sklearn.model_selection import GroupKFold, StratifiedKFold, ShuffleSplit, ParameterSampler, train_test_split
+from sklearn.model_selection import (
+    GroupKFold,
+    StratifiedKFold,
+    ShuffleSplit,
+    ParameterSampler,
+    train_test_split,
+)
 import pandas as pd
 import numpy as np
 import pickle
@@ -9,25 +15,37 @@ import os
 import io
 
 from coxph.coxph_api import CoxPHFG
-from metrics.calibration import integrated_brier_score as nfg_integrated_brier
-from metrics.discrimination import truncated_concordance_td as nfg_cindex_td
+from rsf.rsf_api import RSFFG
+
 
 class CPU_Unpickler(pickle.Unpickler):
     def find_class(self, module, name):
-        if module == 'torch.storage' and name == '_load_from_bytes':
-            return lambda b: torch.load(io.BytesIO(b), map_location = 'cpu')
-        else: 
+        if module == "torch.storage" and name == "_load_from_bytes":
+            return lambda b: torch.load(io.BytesIO(b), map_location="cpu")
+        else:
             return super().find_class(module, name)
 
-class ToyExperiment():
 
-    def train(self, *args, cause_specific = False):
+class ToyExperiment:
+
+    def train(self, *args, cause_specific=False):
         print("Toy Experiment - Results already saved")
 
-class Experiment():
 
-    def __init__(self, hyper_grid = None, n_iter = 100, fold = None,
-                k = 5, random_seed = 0, path = 'results', save = True, delete_log = False, times = 100):
+class Experiment:
+
+    def __init__(
+        self,
+        hyper_grid=None,
+        n_iter=100,
+        fold=None,
+        k=5,
+        random_seed=0,
+        path="results",
+        save=True,
+        delete_log=False,
+        times=100,
+    ):
         """
         Args:
             hyper_grid (Dict, optional): Dictionary of parameters to explore.
@@ -40,13 +58,17 @@ class Experiment():
             delete_log (bool, optional): Should we delete the log after all training. Defaults to False.
             times (int, optional): Number of time points where to evaluates. Defaults to 100.
         """
-        self.hyper_grid = list(ParameterSampler(hyper_grid, n_iter = n_iter, random_state = random_seed) if hyper_grid is not None else [{}])
+        self.hyper_grid = list(
+            ParameterSampler(hyper_grid, n_iter=n_iter, random_state=random_seed)
+            if hyper_grid is not None
+            else [{}]
+        )
         self.random_seed = random_seed
         self.k = k
-        
+
         # Allows to reload a previous model
         self.all_fold = fold
-        self.iter, self.fold = 0, 0 
+        self.iter, self.fold = 0, 0
         self.best_hyper = {}
         self.best_model = {}
         self.best_nll = None
@@ -59,26 +81,36 @@ class Experiment():
         self.running_time = 0
 
     @classmethod
-    def create(cls, hyper_grid = None, n_iter = 100, fold = None, k = 5,
-                random_seed = 0, path = 'results', force = False, save = True, delete_log = False):
-        if not(force):
-            path = path if fold is None else path + '_{}'.format(fold)
-            if os.path.isfile(path + '.csv'):
+    def create(
+        cls,
+        hyper_grid=None,
+        n_iter=100,
+        fold=None,
+        k=5,
+        random_seed=0,
+        path="results",
+        force=False,
+        save=True,
+        delete_log=False,
+    ):
+        if not (force):
+            path = path if fold is None else path + "_{}".format(fold)
+            if os.path.isfile(path + ".csv"):
                 return ToyExperiment()
-            elif os.path.isfile(path + '.pickle'):
-                print('Loading previous copy')
+            elif os.path.isfile(path + ".pickle"):
+                print("Loading previous copy")
                 try:
-                    return cls.load(path+ '.pickle')
+                    return cls.load(path + ".pickle")
                 except Exception as e:
-                    print('ERROR: Reinitalizing object')
-                    os.remove(path + '.pickle')
+                    print("ERROR: Reinitalizing object")
+                    os.remove(path + ".pickle")
                     pass
-                
+
         return cls(hyper_grid, n_iter, fold, k, random_seed, path, save, delete_log)
 
     @classmethod
     def load(cls, path):
-        file = open(path, 'rb')
+        file = open(path, "rb")
         if torch.cuda.is_available():
             return pickle.load(file)
         else:
@@ -89,92 +121,130 @@ class Experiment():
             return se
 
     @classmethod
-    def merge(cls, hyper_grid = None, n_iter = 100, fold = None, k = 5,
-            random_seed = 0, path = 'results', force = False, save = True, delete_log = False):
-        if os.path.isfile(path + '.csv'):
+    def merge(
+        cls,
+        hyper_grid=None,
+        n_iter=100,
+        fold=None,
+        k=5,
+        random_seed=0,
+        path="results",
+        force=False,
+        save=True,
+        delete_log=False,
+    ):
+        if os.path.isfile(path + ".csv"):
             return ToyExperiment()
         merged = cls(hyper_grid, n_iter, fold, k, random_seed, path, save, delete_log)
         for i in range(5):
-            path_i = path + '_{}.pickle'.format(i)
+            path_i = path + "_{}.pickle".format(i)
             if os.path.isfile(path_i):
                 model = cls.load(path_i)
                 print(model.iter, model.fold)
                 merged.best_model[i] = model.best_model[i]
             else:
-                print('Fold {} has not been computed yet'.format(i))
-        merged.fold = 5 # Nothing to run
+                print("Fold {} has not been computed yet".format(i))
+        merged.fold = 5  # Nothing to run
         return merged
 
     @classmethod
     def save(cls, obj):
-        import os 
+        import os
+
         os.makedirs(os.path.dirname(obj.path), exist_ok=True)
-        with open(obj.path + '.pickle', 'wb') as output:
+        with open(obj.path + ".pickle", "wb") as output:
             try:
                 pickle.dump(obj, output)
             except Exception as e:
-                print('Unable to save object')
-                
+                print("Unable to save object")
+
     def save_results(self, x):
         predictions = []
         for i in self.best_model:
             index = self.fold_assignment[self.fold_assignment == i].index
             model = self.best_model[i]
-            predictions.append(pd.concat([self._predict_(model, x[index], r, index) for r in self.risks], axis = 1))
+            predictions.append(
+                pd.concat(
+                    [self._predict_(model, x[index], r, index) for r in self.risks],
+                    axis=1,
+                )
+            )
 
-        predictions = pd.concat(predictions, axis = 0).loc[self.fold_assignment.dropna().index]
+        predictions = pd.concat(predictions, axis=0).loc[
+            self.fold_assignment.dropna().index
+        ]
 
         if self.tosave:
             fold_assignment = self.fold_assignment.copy().to_frame()
-            fold_assignment.columns = pd.MultiIndex.from_product([['Use'], ['']])
-            pd.concat([predictions, fold_assignment], axis = 1).to_csv(self.path + '.csv')
+            fold_assignment.columns = pd.MultiIndex.from_product([["Use"], [""]])
+            pd.concat([predictions, fold_assignment], axis=1).to_csv(self.path + ".csv")
 
         if self.delete_log:
-            os.remove(self.path + '.pickle')
+            os.remove(self.path + ".pickle")
         return predictions
 
-    def train(self, x, t, e, cause_specific = False):
+    def train(self, x, t, e, cause_specific=False):
         """
-            Cross validation model
+        Cross validation model
 
-            Args:
-                x (Dataframe n * d): Observed covariates
-                t (Dataframe n): Time of censoring or event
-                e (Dataframe n): Event indicator
+        Args:
+            x (Dataframe n * d): Observed covariates
+            t (Dataframe n): Time of censoring or event
+            e (Dataframe n): Event indicator
 
-                cause_specific (bool): If model should be trained in cause specific setting
+            cause_specific (bool): If model should be trained in cause specific setting
 
-            Returns:
-                (Dict, Dict): Dict of fitted model and Dict of observed performances
+        Returns:
+            (Dict, Dict): Dict of fitted model and Dict of observed performances
         """
-        self.times = np.linspace(t.min(), t.max(), self.times) if isinstance(self.times, int) else self.times
+        self.times = (
+            np.linspace(t.min(), t.max(), self.times)
+            if isinstance(self.times, int)
+            else self.times
+        )
         self.scaler = StandardScaler()
         x = self.scaler.fit_transform(x)
         e = e.astype(int)
 
         self.risks = np.unique(e[e > 0])
-        self.fold_assignment = pd.Series(np.nan, index = range(len(x)))
+        self.fold_assignment = pd.Series(np.nan, index=range(len(x)))
         groups = None
         if isinstance(self.k, list):
             kf = GroupKFold()
             groups = self.k
         elif self.k == 1:
-            kf = ShuffleSplit(n_splits = self.k, random_state = self.random_seed, test_size = 0.2)
+            kf = ShuffleSplit(
+                n_splits=self.k, random_state=self.random_seed, test_size=0.2
+            )
         else:
-            kf = StratifiedKFold(n_splits = self.k, random_state = self.random_seed, shuffle = True)
+            kf = StratifiedKFold(
+                n_splits=self.k, random_state=self.random_seed, shuffle=True
+            )
 
         # First initialization
         if self.best_nll is None:
             self.best_nll = np.inf
-        for i, (train_index, test_index) in enumerate(kf.split(x, e, groups = groups)):
+        for i, (train_index, test_index) in enumerate(kf.split(x, e, groups=groups)):
             self.fold_assignment[test_index] = i
-            if i < self.fold: continue # When reload: start last point
-            if not(self.all_fold is None) and (self.all_fold != i): continue
-            print('Fold {}'.format(i))
+            if i < self.fold:
+                continue  # When reload: start last point
+            if not (self.all_fold is None) and (self.all_fold != i):
+                continue
+            print("Fold {}".format(i))
 
-            train_index, dev_index = train_test_split(train_index, test_size = 0.2, random_state = self.random_seed, stratify = e[train_index])
-            dev_index, val_index   = train_test_split(dev_index,   test_size = 0.5, random_state = self.random_seed, stratify = e[dev_index])
-            
+            train_index, dev_index = train_test_split(
+                train_index,
+                test_size=0.2,
+                random_state=self.random_seed,
+                stratify=e[train_index],
+            )
+            dev_index, val_index = train_test_split(
+                dev_index,
+                test_size=0.5,
+                random_state=self.random_seed,
+                stratify=e[dev_index],
+            )
+
             x_train, x_dev, x_val = x[train_index], x[dev_index], x[val_index]
             t_train, t_dev, t_val = t[train_index], t[dev_index], t[val_index]
             e_train, e_dev, e_val = e[train_index], e[dev_index], e[val_index]
@@ -182,14 +252,24 @@ class Experiment():
             # Train on subset one domain
             ## Grid search best params
             for j, hyper in enumerate(self.hyper_grid):
-                if j < self.iter: continue # When reload: start last point
+                if j < self.iter:
+                    continue  # When reload: start last point
                 np.random.seed(self.random_seed)
                 torch.manual_seed(self.random_seed)
 
                 start_time = time.process_time()
-                model = self._fit_(x_train, t_train, e_train, x_val, t_val, e_val, hyper.copy(), cause_specific = cause_specific)
+                model = self._fit_(
+                    x_train,
+                    t_train,
+                    e_train,
+                    x_val,
+                    t_val,
+                    e_val,
+                    hyper.copy(),
+                    cause_specific=cause_specific,
+                )
                 self.running_time += time.process_time() - start_time
-                
+
                 nll = self._nll_(model, x_dev, t_dev, e_dev, e_train, t_train)
                 if nll < self.best_nll:
                     self.best_hyper[i] = hyper
@@ -220,73 +300,113 @@ class Experiment():
             train = self.fold_assignment[self.fold_assignment != i].index
             model = self.best_model[i]
             if type(model) is dict:
-                nll_fold[i] = np.mean([self._nll_(model[r], x[index], t[index], e[index] == r, e[train] == r, t[train]) for r in self.risks])
+                nll_fold[i] = np.mean(
+                    [
+                        self._nll_(
+                            model[r],
+                            x[index],
+                            t[index],
+                            e[index] == r,
+                            e[train] == r,
+                            t[train],
+                        )
+                        for r in self.risks
+                    ]
+                )
             else:
-                nll_fold[i] = self._nll_(model, x[index], t[index], e[index], e[train], t[train])
+                nll_fold[i] = self._nll_(
+                    model, x[index], t[index], e[index], e[train], t[train]
+                )
 
         return nll_fold
 
+
 class DSMExperiment(Experiment):
 
-    def _fit_(self, x, t, e, x_val, t_val, e_val, hyperparameter, cause_specific):  
+    def _fit_(self, x, t, e, x_val, t_val, e_val, hyperparameter, cause_specific):
         from DeepSurvivalMachines.dsm import DeepSurvivalMachines
 
-        epochs = hyperparameter.pop('epochs', 1000)
-        batch = hyperparameter.pop('batch', 250)
-        lr = hyperparameter.pop('learning_rate', 0.001)
+        epochs = hyperparameter.pop("epochs", 1000)
+        batch = hyperparameter.pop("batch", 250)
+        lr = hyperparameter.pop("learning_rate", 0.001)
 
-        model = DeepSurvivalMachines(**hyperparameter, cuda = torch.cuda.is_available())
-        model.fit(x, t, e, iters = epochs, batch_size = batch,
-                learning_rate = lr, val_data = (x_val, t_val, e_val))
-        
+        model = DeepSurvivalMachines(**hyperparameter, cuda=torch.cuda.is_available())
+        model.fit(
+            x,
+            t,
+            e,
+            iters=epochs,
+            batch_size=batch,
+            learning_rate=lr,
+            val_data=(x_val, t_val, e_val),
+        )
+
         return model
 
     def _nll_(self, model, x, t, e, *train):
         return model.compute_nll(x, t, e)
 
     def _predict_(self, model, x, r, index):
-        return pd.DataFrame(model.predict_survival(x, self.times.tolist(), risk = r), columns = pd.MultiIndex.from_product([[r], self.times]), index = index)
+        return pd.DataFrame(
+            model.predict_survival(x, self.times.tolist(), risk=r),
+            columns=pd.MultiIndex.from_product([[r], self.times]),
+            index=index,
+        )
+
 
 class DeepHitExperiment(Experiment):
     """
-        This class require a slightly more involved saving scheme to avoid a lambda error with pickle
-        The models are removed at each save and reloaded before saving results 
+    This class require a slightly more involved saving scheme to avoid a lambda error with pickle
+    The models are removed at each save and reloaded before saving results
     """
 
     @classmethod
     def load(cls, path):
         from pycox.models import DeepHitSingle, DeepHit
-        file = open(path, 'rb')
+
+        file = open(path, "rb")
         if torch.cuda.is_available():
             exp = pickle.load(file)
             for i in exp.best_model:
                 if isinstance(exp.best_model[i], tuple):
                     net, cuts = exp.best_model[i]
-                    exp.best_model[i] = DeepHit(net, duration_index = cuts) if len(exp.risks) > 1 \
-                                    else DeepHitSingle(net, duration_index = cuts)
+                    exp.best_model[i] = (
+                        DeepHit(net, duration_index=cuts)
+                        if len(exp.risks) > 1
+                        else DeepHitSingle(net, duration_index=cuts)
+                    )
             return exp
         else:
             se = CPU_Unpickler(file).load()
             for i in se.best_model:
                 if isinstance(se.best_model[i], tuple):
                     net, cuts = se.best_model[i]
-                    se.best_model[i] = DeepHit(net, duration_index = cuts) if len(se.risks) > 1 \
-                                    else DeepHitSingle(net, duration_index = cuts)
+                    se.best_model[i] = (
+                        DeepHit(net, duration_index=cuts)
+                        if len(se.risks) > 1
+                        else DeepHitSingle(net, duration_index=cuts)
+                    )
                     se.best_model[i].cuda = False
             return se
 
     @classmethod
     def save(cls, obj):
         from pycox.models import DeepHitSingle, DeepHit
-        with open(obj.path + '.pickle', 'wb') as output:
+
+        with open(obj.path + ".pickle", "wb") as output:
             try:
                 for i in obj.best_model:
                     # Split model and save components (error pickle otherwise)
-                    if isinstance(obj.best_model[i], DeepHit) or isinstance(obj.best_model[i], DeepHitSingle):
-                        obj.best_model[i] = (obj.best_model[i].net, obj.best_model[i].duration_index)
+                    if isinstance(obj.best_model[i], DeepHit) or isinstance(
+                        obj.best_model[i], DeepHitSingle
+                    ):
+                        obj.best_model[i] = (
+                            obj.best_model[i].net,
+                            obj.best_model[i].duration_index,
+                        )
                 pickle.dump(obj, output)
             except Exception as e:
-                print('Unable to save object')
+                print("Unable to save object")
 
     def save_results(self, x):
         from pycox.models import DeepHitSingle, DeepHit
@@ -296,99 +416,169 @@ class DeepHitExperiment(Experiment):
             if isinstance(self.best_model[i], tuple):
                 # Reload model
                 net, cuts = self.best_model[i]
-                self.best_model[i] = DeepHit(net, duration_index = cuts) if len(self.risks) > 1 \
-                                else DeepHitSingle(net, duration_index = cuts)
+                self.best_model[i] = (
+                    DeepHit(net, duration_index=cuts)
+                    if len(self.risks) > 1
+                    else DeepHitSingle(net, duration_index=cuts)
+                )
         return super().save_results(x)
 
-    def _fit_(self, x, t, e, x_val, t_val, e_val, hyperparameter, cause_specific): 
+    def _fit_(self, x, t, e, x_val, t_val, e_val, hyperparameter, cause_specific):
         from deephit.utils import CauseSpecificNet, tt, LabTransform
         from pycox.models import DeepHitSingle, DeepHit
 
-        n = hyperparameter.pop('n', 15)
-        nodes = hyperparameter.pop('nodes', [100])
-        shared = hyperparameter.pop('shared', [100])
-        epochs = hyperparameter.pop('epochs', 1000)
-        batch = hyperparameter.pop('batch', 250)
-        lr = hyperparameter.pop('learning_rate', 0.001)
+        n = hyperparameter.pop("n", 15)
+        nodes = hyperparameter.pop("nodes", [100])
+        shared = hyperparameter.pop("shared", [100])
+        epochs = hyperparameter.pop("epochs", 1000)
+        batch = hyperparameter.pop("batch", 250)
+        lr = hyperparameter.pop("learning_rate", 0.001)
 
         self.eval_times = np.linspace(0, t.max(), n)
         callbacks = [tt.callbacks.EarlyStopping()]
-        num_risks = len(np.unique(e))- 1
-        if  num_risks > 1:
+        num_risks = len(np.unique(e)) - 1
+        if num_risks > 1:
             self.labtrans = LabTransform(self.eval_times.tolist())
-            net = CauseSpecificNet(x.shape[1], shared, nodes, num_risks, self.labtrans.out_features, False)
-            model = DeepHit(net, tt.optim.Adam, duration_index = self.labtrans.cuts)
+            net = CauseSpecificNet(
+                x.shape[1], shared, nodes, num_risks, self.labtrans.out_features, False
+            )
+            model = DeepHit(net, tt.optim.Adam, duration_index=self.labtrans.cuts)
         else:
             self.labtrans = DeepHitSingle.label_transform(self.eval_times.tolist())
-            net = tt.practical.MLPVanilla(x.shape[1], shared + nodes, self.labtrans.out_features, False)
-            model = DeepHitSingle(net, tt.optim.Adam, duration_index = self.labtrans.cuts)
+            net = tt.practical.MLPVanilla(
+                x.shape[1], shared + nodes, self.labtrans.out_features, False
+            )
+            model = DeepHitSingle(net, tt.optim.Adam, duration_index=self.labtrans.cuts)
         model.optimizer.set_lr(lr)
-        model.fit(x.astype('float32'), self.labtrans.transform(t, e), batch_size = batch, epochs = epochs, 
-                    callbacks = callbacks, val_data = (x_val.astype('float32'), self.labtrans.transform(t_val, e_val)))
+        model.fit(
+            x.astype("float32"),
+            self.labtrans.transform(t, e),
+            batch_size=batch,
+            epochs=epochs,
+            callbacks=callbacks,
+            val_data=(x_val.astype("float32"), self.labtrans.transform(t_val, e_val)),
+        )
         return model
 
     def _nll_(self, model, x, t, e, *train):
-        return model.score_in_batches(x.astype('float32'), self.labtrans.transform(t, e))['loss']
+        return model.score_in_batches(
+            x.astype("float32"), self.labtrans.transform(t, e)
+        )["loss"]
 
     def _predict_(self, model, x, r, index):
         if len(self.risks) == 1:
-            survival = model.predict_surv_df(x.astype('float32')).values
+            survival = model.predict_surv_df(x.astype("float32")).values
         else:
-            survival = 1 - model.predict_cif(x.astype('float32'))[r - 1]
+            survival = 1 - model.predict_cif(x.astype("float32"))[r - 1]
 
         # Interpolate at the point of evaluation
-        survival = pd.DataFrame(survival, columns = index, index = model.duration_index)
-        predictions = pd.DataFrame(np.nan, columns = index, index = self.times)
-        survival = pd.concat([survival, predictions]).sort_index(kind = 'stable').bfill().ffill()
-        survival = survival[~survival.index.duplicated(keep='first')]
-        return survival.loc[self.times].set_index(pd.MultiIndex.from_product([[r], self.times])).T
+        survival = pd.DataFrame(survival, columns=index, index=model.duration_index)
+        predictions = pd.DataFrame(np.nan, columns=index, index=self.times)
+        survival = (
+            pd.concat([survival, predictions]).sort_index(kind="stable").bfill().ffill()
+        )
+        survival = survival[~survival.index.duplicated(keep="first")]
+        return (
+            survival.loc[self.times]
+            .set_index(pd.MultiIndex.from_product([[r], self.times]))
+            .T
+        )
+
 
 class NFGExperiment(DSMExperiment):
 
-    def _fit_(self, x, t, e, x_val, t_val, e_val, hyperparameter, cause_specific):  
+    def _fit_(self, x, t, e, x_val, t_val, e_val, hyperparameter, cause_specific):
         from nfg import NeuralFineGray
 
-        epochs = hyperparameter.pop('epochs', 1000)
-        batch = hyperparameter.pop('batch', 250)
-        lr = hyperparameter.pop('learning_rate', 0.001)
-        patience_max = hyperparameter.pop('patience_max', 3)
+        epochs = hyperparameter.pop("epochs", 1000)
+        batch = hyperparameter.pop("batch", 250)
+        lr = hyperparameter.pop("learning_rate", 0.001)
+        patience_max = hyperparameter.pop("patience_max", 3)
 
-        model = NeuralFineGray(**hyperparameter, cause_specific = cause_specific)
-        model.fit(x, t, e, n_iter = epochs, bs = batch, patience_max = patience_max,
-                lr = lr, val_data = (x_val, t_val, e_val))
-        
+        model = NeuralFineGray(**hyperparameter, cause_specific=cause_specific)
+        model.fit(
+            x,
+            t,
+            e,
+            n_iter=epochs,
+            bs=batch,
+            patience_max=patience_max,
+            lr=lr,
+            val_data=(x_val, t_val, e_val),
+        )
+
         return model
 
     def _predict_(self, model, x, r, index):
-        return pd.DataFrame(model.predict_survival(x, self.times.tolist(), r if model.torch_model.risks >= r else 1), columns = pd.MultiIndex.from_product([[r], self.times]), index = index)
+        return pd.DataFrame(
+            model.predict_survival(
+                x, self.times.tolist(), r if model.torch_model.risks >= r else 1
+            ),
+            columns=pd.MultiIndex.from_product([[r], self.times]),
+            index=index,
+        )
+
 
 class DeSurvExperiment(NFGExperiment):
 
-    def _fit_(self, x, t, e, x_val, t_val, e_val, hyperparameter, cause_specific):  
+    def _fit_(self, x, t, e, x_val, t_val, e_val, hyperparameter, cause_specific):
         from desurv import DeSurv
 
-        epochs = hyperparameter.pop('epochs', 1000)
-        batch = hyperparameter.pop('batch', 250)
-        lr = hyperparameter.pop('learning_rate', 0.001)
-        patience_max = hyperparameter.pop('patience_max', 3)
+        epochs = hyperparameter.pop("epochs", 1000)
+        batch = hyperparameter.pop("batch", 250)
+        lr = hyperparameter.pop("learning_rate", 0.001)
+        patience_max = hyperparameter.pop("patience_max", 3)
 
-        model = DeSurv(**hyperparameter, normalise = "minmax")
-        model.fit(x, t, e, n_iter = epochs, bs = batch, patience_max = patience_max,
-                lr = lr, val_data = (x_val, t_val, e_val))
-        
+        model = DeSurv(**hyperparameter, normalise="minmax")
+        model.fit(
+            x,
+            t,
+            e,
+            n_iter=epochs,
+            bs=batch,
+            patience_max=patience_max,
+            lr=lr,
+            val_data=(x_val, t_val, e_val),
+        )
+
         return model
-    
-class CoxExperiment(Experiment):
+
+
+class CoxPHExperiment(Experiment):
+    def __init__(
+        self,
+        hyper_grid=None,
+        n_iter=100,
+        fold=None,
+        k=5,
+        random_seed=0,
+        path="results",
+        save=True,
+        delete_log=False,
+        times=100,
+    ):
+
+        super().__init__(
+            hyper_grid=hyper_grid,
+            n_iter=n_iter,
+            fold=fold,
+            k=k,
+            random_seed=random_seed,
+            path=path,
+            save=save,
+            delete_log=delete_log,
+            times=times,
+        )
+
+        self.eval_params = None
+
     def _fit_(self, x, t, e, x_val, t_val, e_val, hyperparameter, cause_specific=False):
         pen = hyperparameter.pop("penalizer", 0.01)
         model = CoxPHFG(penalizer=pen)
-        model.fit(x = x,
-                  t = t, 
-                  e = e,
-                  val_data = (x_val, t_val, e_val))
+        model.fit(x=x, t=t, e=e, val_data=(x_val, t_val, e_val))
         return model
 
-    def _nll_(self, model,*args, **kwargs):
+    def _nll_(self, model, *args, **kwargs):
         return model.model.log_likelihood_
 
     def _predict_(self, model, x, r, index):
@@ -396,24 +586,506 @@ class CoxExperiment(Experiment):
         times = np.asarray(self.times, dtype=float)
         S = model.model.predict_survival_function(X, times=times)
         S = S.T
-        assert len(index) == S.shape[0], f"index len {len(index)} != S rows {S.shape[0]}"
+        assert (
+            len(index) == S.shape[0]
+        ), f"index len {len(index)} != S rows {S.shape[0]}"
+        S.index = index
+        S.columns = pd.MultiIndex.from_product([[r], times])
+        return S
+    
+    def get_eval_metrics(self,):
+        self.eval_params = [coxph.eval_params for coxph in self.best_model.values()]
+        return self.eval_params
+
+
+class RSFExperiment(Experiment):
+    def __init__(
+        self,
+        hyper_grid=None,
+        n_iter=100,
+        fold=None,
+        k=5,
+        random_seed=0,
+        path="results",
+        save=True,
+        delete_log=False,
+        times=100,
+    ):
+
+        super().__init__(
+            hyper_grid=hyper_grid,
+            n_iter=n_iter,
+            fold=fold,
+            k=k,
+            random_seed=random_seed,
+            path=path,
+            save=save,
+            delete_log=delete_log,
+            times=times,
+        )
+
+        self.eval_params = None
+
+    def _fit_(self, x, t, e, x_val, t_val, e_val, hyperparameter, cause_specific=False):
+        n_estimators = hyperparameter.pop("n_estimators", 200)
+        max_depth = hyperparameter.pop("max_depth", 10)
+        min_samples_split = hyperparameter.pop("min_samples_split", 20)
+        min_samples_leaf = hyperparameter.pop("min_samples_leaf", 10)
+        random_state = hyperparameter.pop("random_state", 42)
+
+        model = RSFFG(
+            n_estimators=n_estimators,
+            max_depth=max_depth,
+            min_samples_split=min_samples_split,
+            min_samples_leaf=min_samples_leaf,
+            random_state=random_state,
+        )
+        model.fit(x, t, e, vsize=0.15, val_data=(x_val, t_val, e_val))
+        return model
+
+    def _nll_(self, model, x_dev, t_dev, e_dev, e_train, t_train):
+        event_mask = e_dev > 0
+        if not np.any(event_mask):
+            return np.nan
+
+        rsf = model.model
+
+        if hasattr(rsf, "event_times_"):
+            event_times = rsf.event_times_
+        else:
+            event_times = np.unique(t_train[e_train > 0])
+
+        surv_array = rsf.predict_survival_function(x_dev, return_array=True)
+        nll_sum = 0.0
+        n_events = 0
+
+        for i in np.where(event_mask)[0]:
+            time_i = t_dev[i]
+            S_i = surv_array[i]
+            idx = np.searchsorted(event_times, time_i, side="right") - 1
+            if idx < 0:
+                S_t = 1.0
+            else:
+                S_t = S_i[idx]
+            S_t = np.clip(S_t, 1e-12, 1.0)
+            nll_sum += -np.log(S_t)
+            n_events += 1
+
+        mean_nll = nll_sum / n_events if n_events > 0 else np.nan
+        return mean_nll
+
+    def _predict_(self, model, x, r, index):
+        # times = np.asarray(self.times, dtype=float)
+        # S = model.model.predict_survival_function(x, return_array=True)
+        # S = S.T
+        # assert (
+        #     len(index) == S.shape[0]
+        # ), f"index len {len(index)} != S rows {S.shape[0]}"
+        # S.index = index
+        # S.columns = pd.MultiIndex.from_product([[r], times])
+        # return S
+
+        rsf = model.model
+        times = np.asarray(rsf.event_times_, dtype=float)
+
+        S_array = rsf.predict_survival_function(x, return_array=True)
+
+        if S_array.ndim == 1:
+            S_array = S_array[None, :]
+
+        assert (
+            len(index) == S_array.shape[0]
+        ), f"index len {len(index)} != number of predictions {S_array.shape[0]}"
+
+        S = pd.DataFrame(
+            S_array,
+            index=index,
+            columns=pd.MultiIndex.from_product([[r], times]),
+        )
+
+        return S
+
+    def get_eval_metrics(self,):
+        self.eval_params = [rsf.eval_params for rsf in self.best_model.values()]
+        return self.eval_params
+
+
+class XGBoostExperiment(Experiment):
+    def __init__(
+        self,
+        hyper_grid=None,
+        n_iter=100,
+        fold=None,
+        k=5,
+        random_seed=0,
+        path="results",
+        save=True,
+        delete_log=False,
+        times=100,
+    ):
+
+        super().__init__(
+            hyper_grid=hyper_grid,
+            n_iter=n_iter,
+            fold=fold,
+            k=k,
+            random_seed=random_seed,
+            path=path,
+            save=save,
+            delete_log=delete_log,
+            times=times,
+        )
+
+        self.eval_params = None
+
+    def _fit_(self, x, t, e, x_val, t_val, e_val, hyperparameter, cause_specific=False):
+        pass
+
+    def _nll_(self, model, x_dev, t_dev, e_dev, e_train, t_train):
+        pass
+
+    def _predict_(self, model, x, r, index):
+        pass
+
+    def get_eval_metrics(self,):
+        self.eval_params = [model_.eval_params for model_ in self.best_model.values()]
+        return self.eval_params
+
+
+class DeepSurvExperiment(Experiment):
+    def __init__(
+        self,
+        hyper_grid=None,
+        n_iter=100,
+        fold=None,
+        k=5,
+        random_seed=0,
+        path="results",
+        save=True,
+        delete_log=False,
+        times=100,
+    ):
+
+        super().__init__(
+            hyper_grid=hyper_grid,
+            n_iter=n_iter,
+            fold=fold,
+            k=k,
+            random_seed=random_seed,
+            path=path,
+            save=save,
+            delete_log=delete_log,
+            times=times,
+        )
+
+        self.eval_params = None
+
+    def _fit_(self, x, t, e, x_val, t_val, e_val, hyperparameter, cause_specific=False):
+        pass
+
+    def _nll_(self, model, x_dev, t_dev, e_dev, e_train, t_train):
+        pass
+
+    def _predict_(self, model, x, r, index):
+        pass
+
+    def get_eval_metrics(self,):
+        self.eval_params = [model_.eval_params for model_ in self.best_model.values()]
+        return self.eval_params
+
+
+class CoxPH_TabPFN_embeddings(CoxPHExperiment):
+    def __init__(
+        self,
+        hyper_grid=None,
+        n_iter=100,
+        fold=None,
+        k=5,
+        random_seed=0,
+        path="results",
+        save=True,
+        delete_log=False,
+        times=100,
+    ):
+
+        super().__init__(
+            hyper_grid=hyper_grid,
+            n_iter=n_iter,
+            fold=fold,
+            k=k,
+            random_seed=random_seed,
+            path=path,
+            save=save,
+            delete_log=delete_log,
+            times=times,
+        )
+
+        self.tabpfn_train_data = {}
+
+    def _predict_(self, model, x, r, index):
+        from tfm.TabPFN.extract_embeddings import get_embeddings_tabpfn
+
+        fold = int(self.fold_assignment.loc[index[0]])
+
+        train_info = self.tabpfn_train_data[fold]
+        X_train_df = pd.DataFrame(train_info["X_train"])
+        t_train = pd.Series(train_info["t_train"])
+        e_train = pd.Series(train_info["e_train"])
+
+        X_test_df = pd.DataFrame(x, index=index)
+
+        _, X_test_emb = get_embeddings_tabpfn(
+            X_train=X_train_df,
+            X_test=X_test_df,
+            t_train=t_train,
+            e_train=e_train,
+            data_frame_output=False,
+        )
+
+        X_emb_df = pd.DataFrame(X_test_emb, index=index)
+
+        times = np.asarray(self.times, dtype=float)
+        S = model.model.predict_survival_function(X_emb_df, times=times)
+        S = S.T
+        assert (
+            len(index) == S.shape[0]
+        ), f"index len {len(index)} != S rows {S.shape[0]}"
         S.index = index
         S.columns = pd.MultiIndex.from_product([[r], times])
         return S
 
-class RSFExperiment(Experiment):
-    def _fit_(self, x, t, e, x_val, t_val, e_val, hyperparameter, cause_specific=False):
-        pass
-    def _nll_(self, model, x_dev, t_dev, e_dev, e_train, t_train):
-        pass
-    def _predict_(self, model, x, r, index):
-        pass
+    def train(self, x, t, e, cause_specific=False):
+        """
+        Cross validation model
 
-class XGBoostExperiment(Experiment):
-    def _fit_(self, x, t, e, x_val, t_val, e_val, hyperparameter, cause_specific=False):
-        pass
-    def _nll_(self, model, x_dev, t_dev, e_dev, e_train, t_train):
-        pass
-    def _predict_(self, model, x, r, index):
-        pass
+        Args:
+            x (Dataframe n * d): Observed covariates
+            t (Dataframe n): Time of censoring or event
+            e (Dataframe n): Event indicator
 
+            cause_specific (bool): If model should be trained in cause specific setting
+
+        Returns:
+            (Dict, Dict): Dict of fitted model and Dict of observed performances
+        """
+        from tfm.TabPFN.extract_embeddings import get_embeddings_tabpfn
+
+        self.times = np.linspace(t.min(), t.max(), self.times)
+        self.scaler = StandardScaler()
+        x_scaled = self.scaler.fit_transform(x)
+        e = e.astype(int)
+
+        self.risks = np.unique(e[e > 0])
+        self.fold_assignment = pd.Series(np.nan, index=range(len(x_scaled)))
+        groups = None
+        if isinstance(self.k, list):
+            kf = GroupKFold()
+            groups = self.k
+        elif self.k == 1:
+            kf = ShuffleSplit(
+                n_splits=self.k, random_state=self.random_seed, test_size=0.2
+            )
+        else:
+            kf = StratifiedKFold(
+                n_splits=self.k, random_state=self.random_seed, shuffle=True
+            )
+
+        if self.best_nll is None:
+            self.best_nll = np.inf
+        for i, (train_index, test_index) in enumerate(
+            kf.split(x_scaled, e, groups=groups)
+        ):
+            self.fold_assignment[test_index] = i
+
+            self.tabpfn_train_data[i] = {
+                "X_train": x[train_index],
+                "t_train": t[train_index],
+                "e_train": e[train_index],
+            }
+
+            if i < self.fold:
+                continue
+            if self.all_fold is not None and self.all_fold != i:
+                continue
+            print(f"Fold {i}")
+
+            train_index, dev_index = train_test_split(
+                train_index,
+                test_size=0.2,
+                random_state=self.random_seed,
+                stratify=e[train_index],
+            )
+            dev_index, val_index = train_test_split(
+                dev_index,
+                test_size=0.5,
+                random_state=self.random_seed,
+                stratify=e[dev_index],
+            )
+
+            # raw arrays for this fold
+            x_train = x_scaled[train_index]
+            x_dev = x_scaled[dev_index]
+            x_val = x_scaled[val_index]
+
+            t_train = t[train_index]
+            t_dev = t[dev_index]
+            t_val = t[val_index]
+
+            e_train = e[train_index]
+            e_dev = e[dev_index]
+            e_val = e[val_index]
+
+            # TabPFN embeddings
+            # train + dev embeddings
+            x_train_emb, x_dev_emb = get_embeddings_tabpfn(
+                X_train=x_train,
+                X_test=x_dev,
+                t_train=t_train,
+                e_train=e_train,
+                data_frame_output=False,
+            )
+            # train + val embeddings
+            _, x_val_emb = get_embeddings_tabpfn(
+                X_train=x_train,
+                X_test=x_val,
+                t_train=t_train,
+                e_train=e_train,
+                data_frame_output=False,
+            )
+
+            # Train on subset one domain
+            ## Grid search best params
+            for j, hyper in enumerate(self.hyper_grid):
+                if j < self.iter:
+                    continue
+
+                np.random.seed(self.random_seed)
+                torch.manual_seed(self.random_seed)
+
+                start_time = time.process_time()
+                model = self._fit_(
+                    x_train_emb,
+                    t_train,
+                    e_train,
+                    x_val_emb,
+                    t_val,
+                    e_val,
+                    hyper.copy(),
+                    cause_specific=cause_specific,
+                )
+                self.running_time += time.process_time() - start_time
+
+                nll = self._nll_(
+                    model,
+                    x_dev_emb,
+                    t_dev,
+                    e_dev,
+                    e_train,
+                    t_train,
+                )
+
+                if nll < self.best_nll:
+                    self.best_hyper[i] = hyper
+                    self.best_model[i] = model
+                    self.best_nll = nll
+
+                self.iter = j + 1
+                self.save(self)
+
+            self.fold, self.iter = i + 1, 0
+            self.best_nll = np.inf
+            self.save(self)
+
+        if self.all_fold is None:
+            return self.save_results(x_scaled)
+
+    def get_eval_metrics(self,):
+        self.eval_params = [model_.eval_params for model_ in self.best_model.values()]
+        return self.eval_params
+
+
+class RSF_TabPFN_embeddings_Experiment(RSFExperiment):
+    def __init__(
+        self,
+        hyper_grid=None,
+        n_iter=100,
+        fold=None,
+        k=5,
+        random_seed=0,
+        path="results",
+        save=True,
+        delete_log=False,
+        times=100,
+    ):
+
+        super().__init__(
+            hyper_grid=hyper_grid,
+            n_iter=n_iter,
+            fold=fold,
+            k=k,
+            random_seed=random_seed,
+            path=path,
+            save=save,
+            delete_log=delete_log,
+            times=times,
+        )
+
+        self.tabpfn_train_data = {}
+
+
+class XGBoost_TabPFN_embeddings_Experiment(XGBoostExperiment):
+    def __init__(
+        self,
+        hyper_grid=None,
+        n_iter=100,
+        fold=None,
+        k=5,
+        random_seed=0,
+        path="results",
+        save=True,
+        delete_log=False,
+        times=100,
+    ):
+
+        super().__init__(
+            hyper_grid=hyper_grid,
+            n_iter=n_iter,
+            fold=fold,
+            k=k,
+            random_seed=random_seed,
+            path=path,
+            save=save,
+            delete_log=delete_log,
+            times=times,
+        )
+
+        self.tabpfn_train_data = {}
+
+
+class DeepSurv_TabPFN_embeddings_Experiment(DeepSurvExperiment):
+    def __init__(
+        self,
+        hyper_grid=None,
+        n_iter=100,
+        fold=None,
+        k=5,
+        random_seed=0,
+        path="results",
+        save=True,
+        delete_log=False,
+        times=100,
+    ):
+
+        super().__init__(
+            hyper_grid=hyper_grid,
+            n_iter=n_iter,
+            fold=fold,
+            k=k,
+            random_seed=random_seed,
+            path=path,
+            save=save,
+            delete_log=delete_log,
+            times=times,
+        )
+
+        self.tabpfn_train_data = {}

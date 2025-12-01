@@ -1,12 +1,12 @@
 import numpy as np
+import pandas as pd
+
 from sksurv.ensemble import RandomSurvivalForest
+from sksurv.util import Surv
 
 # Import the shared data loader
-<<<<<<<< HEAD:rsf/utilities.py
-from ..datasets.data_loader import load_and_preprocess_data
-========
+
 from datasets.data_loader import load_and_preprocess_data
->>>>>>>> TFM:RSF/RSF.py
 
 # Import metrics from neuralfg repository
 import sys
@@ -14,11 +14,34 @@ sys.path.insert(0, '/vol/miltank/users/sajb/Project/NeuralFineGray')
 from metrics.calibration import integrated_brier_score
 from metrics.discrimination import truncated_concordance_td
 
+def wrap_np_to_pandas(X, index=None, prefix="x"):
+    if isinstance(X, (pd.DataFrame, pd.Series)):
+        return X
 
-def train_rsf_model(X_train, y_train, n_estimators=200, max_depth=10, min_samples_split=20, 
+    X = np.asarray(X)
+
+    if X.ndim == 1:
+        return pd.Series(X, index=index)
+
+    if X.ndim == 2:
+        n_cols = X.shape[1]
+        cols = [f"{prefix}{i}" for i in range(n_cols)]
+        return pd.DataFrame(X, columns=cols, index=index)
+
+    raise ValueError("Input must be 1D or 2D numpy array or pandas object.")
+
+def train_rsf_model(X_train, t_train, e_train, t_val, e_val, n_estimators=200, max_depth=10, min_samples_split=20, 
                     min_samples_leaf=10, random_state=42):
     """Train Random Survival Forest model."""
     print(f"Training RSF with {n_estimators} trees...")
+
+    X_train = wrap_np_to_pandas(X_train)
+    t_train = wrap_np_to_pandas(t_train, prefix="t")
+    e_train = wrap_np_to_pandas(e_train, prefix="e")
+    t_val = wrap_np_to_pandas(t_val, prefix="t")
+    e_val = wrap_np_to_pandas(e_val, prefix="e")
+
+    y_train = Surv.from_arrays(event=e_train.values, time=t_train.values)
     
     model = RandomSurvivalForest(
         n_estimators=n_estimators,
@@ -33,9 +56,18 @@ def train_rsf_model(X_train, y_train, n_estimators=200, max_depth=10, min_sample
     model.fit(X_train, y_train)
     return model
 
-
-def evaluate_rsf_model(model, X_train, X_val, y_train, y_val):
+def evaluate_rsf_model(model, X_train, t_train, e_train, X_val, t_val, e_val):
     """Evaluate Random Survival Forest model using NeuralFineGray metrics."""
+
+    X_train = wrap_np_to_pandas(X_train)
+    t_train = wrap_np_to_pandas(t_train, prefix="t")
+    e_train = wrap_np_to_pandas(e_train, prefix="e")
+    X_val = wrap_np_to_pandas(X_val)
+    t_val = wrap_np_to_pandas(t_val, prefix="t")
+    e_val = wrap_np_to_pandas(e_val, prefix="e")
+
+    y_train = Surv.from_arrays(event=e_train.values, time=t_train.values)
+    y_val = Surv.from_arrays(event=e_val.values, time=t_val.values)
     
     # Extract time and event arrays from structured arrays
     t_train = y_train['time']
@@ -83,7 +115,13 @@ def evaluate_rsf_model(model, X_train, X_val, y_train, y_val):
     
     # The survival functions are evaluated at the unique event times from training
     # We need to interpolate to our time grid
-    train_times = model.unique_times_
+    try:
+        train_times = model.unique_times_
+    except Exception as X:
+        print(X)
+        train_times = model.event_times_
+        print("used event_times_ instead")
+    #
     
     # Interpolate survival probabilities to our time grid
     survival_probs_train_interpolated = np.zeros((len(X_train), len(time_grid)))
@@ -152,11 +190,55 @@ def evaluate_rsf_model(model, X_train, X_val, y_train, y_val):
     )
     
     return {
+        "surv_probs_train": survival_probs_train,
+        "surv_probs_val": survival_probs_val,
         "c_index_train": c_index_train,
         "c_index_val": c_index_val,
         "ibs_val": ibs_val
     }
 
+def summary_output(X_train, t_train, e_train, X_val, t_val, e_val, metrics):
+    X_train = wrap_np_to_pandas(X_train)
+    t_train = wrap_np_to_pandas(t_train, prefix="t")
+    e_train = wrap_np_to_pandas(e_train, prefix="e")
+    X_val = wrap_np_to_pandas(X_val)
+    t_val = wrap_np_to_pandas(t_val, prefix="t")
+    e_val = wrap_np_to_pandas(e_val, prefix="e")
+
+    y_train = Surv.from_arrays(event=e_train.values, time=t_train.values)
+    y_val = Surv.from_arrays(event=e_val.values, time=t_val.values)
+
+    print(f"Training samples: {len(X_train)}")
+    print(f"Validation samples: {len(X_val)}")
+    print(f"Features: {X_train.shape[1]}")
+    print(f"Time range (train): [{y_train['time'].min():.2f}, {y_train['time'].max():.2f}]")
+    print(f"Time range (val):   [{y_val['time'].min():.2f}, {y_val['time'].max():.2f}]")
+    print(f"Event rate (train): {y_train['event'].mean():.2%}")
+    print(f"Event rate (val):   {y_val['event'].mean():.2%}")
+    
+
+    
+    print("\n" + "="*50)
+    print("RANDOM SURVIVAL FOREST RESULTS")
+    print("="*50)
+    if not np.isnan(metrics['c_index_train']):
+        print(f"C-index (train): {metrics['c_index_train']:.4f}")
+    else:
+        print(f"C-index (train): N/A")
+    
+    if not np.isnan(metrics['c_index_val']):
+        print(f"C-index (val):   {metrics['c_index_val']:.4f}")
+    else:
+        print(f"C-index (val):   N/A")
+    
+    if not np.isnan(metrics['ibs_val']):
+        print(f"IBS (val):       {metrics['ibs_val']:.4f}")
+    else:
+        print(f"IBS (val):       N/A")
+    print("="*50)
+    print("\nNote: C-index and IBS computed using NeuralFineGray metrics")
+    print("      for single event survival analysis (competing_risk=1)")
+    print("      Validation metrics computed on samples with time < max(train time)")
 
 def main(dataset='METABRIC', normalize=True, test_size=0.2, random_state=42):
     print(f"Loading and preprocessing {dataset} dataset...")
