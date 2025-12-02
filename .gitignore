@@ -128,10 +128,7 @@ dmypy.json
 # Pyre type checker
 .pyre/
 
-# SLURM and cluster job files
-*.sbatch
-*.slurm
-#*.out
-*.err
-#logs/
-#examples/baselines/logs/
+# TabICL outputs
+tabICL/results/
+tabICL/embeddings/
+tabICL/__pycache__/

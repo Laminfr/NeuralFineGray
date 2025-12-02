@@ -1,4 +1,4 @@
-from auton_survival.datasets import load_dataset as load_dsm
+from DeepSurvivalMachines.dsm.datasets import load_dataset as load_dsm
 from sklearn.preprocessing import StandardScaler, OrdinalEncoder
 from sklearn.impute import SimpleImputer
 from pycox import datasets
@@ -8,9 +8,37 @@ import os
 from pathlib import Path
 import regex as re
 
+# Make auton_survival import optional (since it conflicts with TabICL environment)
+try:
+    from auton_survival.datasets import load_dataset as load_dsm
+    AUTONSURV_AVAILABLE = True
+except ImportError:
+    try:
+        # Fallback to DeepSurvivalMachines if available
+        from DeepSurvivalMachines.dsm.datasets import load_dataset as load_dsm
+        AUTONSURV_AVAILABLE = True
+    except ImportError:
+        AUTONSURV_AVAILABLE = False
+        load_dsm = None
+
 EPS = 1e-8
 
-def load_dataset(dataset='SUPPORT', path = './', normalize = True, **kwargs):
+def load_dataset(dataset='SUPPORT', path='./', normalize=True, return_raw=False, **kwargs):
+    """
+    Load survival datasets. Supports METABRIC, GBSG, SYNTHETIC, SEER via pycox/custom,
+    and others via auton_survival if available.
+
+    Args:
+        dataset: Dataset name
+        path: Path for data files
+        normalize: Whether to standardize features
+        return_raw: If True, also return raw DataFrame with original string/categorical values
+        **kwargs: Additional arguments
+
+    Returns:
+        If return_raw=False: (X, T, E, feature_names)
+        If return_raw=True: (X, T, E, feature_names, df_raw)
+    """
     if dataset == 'GBSG':
         df = datasets.gbsg.read_df()
     elif dataset == 'METABRIC':
@@ -70,13 +98,181 @@ def load_dataset(dataset='SUPPORT', path = './', normalize = True, **kwargs):
         ]
         df['duration'] += EPS  # Avoid problem of the minimum value 0
     else:
-        return load_dsm(dataset, normalize = normalize, **kwargs)
+        # Try to load from auton_survival/DSM
+        if not AUTONSURV_AVAILABLE:
+            raise ImportError(
+                f"Dataset '{dataset}' requires auton_survival or DeepSurvivalMachines. "
+                "These were not found (likely due to environment conflicts with TabICL). "
+                "Please use 'METABRIC', 'GBSG', or 'SEER'."
+            )
+        # auton_survival returns different formats depending on dataset
+        result = load_dsm(dataset)
 
-    covariates = df.drop(['duration', 'event'], axis = 'columns')
-    return StandardScaler().fit_transform(covariates.values).astype(float) if normalize else covariates.values.astype(float),\
-           df['duration'].values.astype(float),\
-           df['event'].values.astype(int),\
-           covariates.columns
+        if dataset.upper() == 'PBC':
+            # PBC returns (X, T, E) as numpy arrays
+            X_raw, T, E = result
+            feature_names = [f'feat_{i}' for i in range(X_raw.shape[1])]
+            df_raw = pd.DataFrame(X_raw, columns=feature_names) if return_raw else None
+            if normalize:
+                X = StandardScaler().fit_transform(X_raw).astype(float)
+            else:
+                X = X_raw.astype(float)
+            if return_raw:
+                return X, T.astype(float), E.astype(int), feature_names, df_raw
+            return X, T.astype(float), E.astype(int), feature_names
+
+        elif dataset.upper() == 'SUPPORT':
+            # SUPPORT returns (outcomes_df, features_df)
+            outcomes, features = result
+            T = outcomes['time'].values.astype(float)
+            E = outcomes['event'].values.astype(int)
+            feature_names = features.columns.tolist()
+            df_raw = features.copy() if return_raw else None
+
+            # Encode categorical features and impute missing values
+            features_encoded = features.copy()
+            for col in features_encoded.columns:
+                if features_encoded[col].dtype == 'object':
+                    # Fill NaN with 'missing' before encoding
+                    features_encoded[col] = features_encoded[col].fillna('missing')
+                    features_encoded[col] = OrdinalEncoder().fit_transform(
+                        features_encoded[[col]]
+                    ).flatten()
+
+            # Impute remaining numerical NaNs with median
+            imputer = SimpleImputer(strategy='median')
+            features_imputed = imputer.fit_transform(features_encoded.values)
+
+            if normalize:
+                X = StandardScaler().fit_transform(features_imputed).astype(float)
+            else:
+                X = features_imputed.astype(float)
+            if return_raw:
+                return X, T, E, feature_names, df_raw
+            return X, T, E, feature_names
+        else:
+            # Generic fallback - assume (X, T, E) format
+            if len(result) == 3:
+                X_raw, T, E = result
+                feature_names = [f'feat_{i}' for i in range(X_raw.shape[1])]
+                df_raw = pd.DataFrame(X_raw, columns=feature_names) if return_raw else None
+                if normalize:
+                    X = StandardScaler().fit_transform(X_raw).astype(float)
+                else:
+                    X = X_raw.astype(float)
+                if return_raw:
+                    return X, T.astype(float), E.astype(int), feature_names, df_raw
+                return X, T.astype(float), E.astype(int), feature_names
+            else:
+                raise ValueError(f"Unknown dataset format for '{dataset}': got {len(result)} elements")
+
+    covariates = df.drop(['duration', 'event'], axis='columns')
+
+    # Store raw DataFrame before processing
+    df_raw = covariates.copy() if return_raw else None
+
+    # Handle normalization
+    if normalize:
+        X = StandardScaler().fit_transform(covariates.values).astype(float)
+    else:
+        X = covariates.values.astype(float)
+
+    T = df['duration'].values.astype(float)
+    E = df['event'].values.astype(int)
+
+    if return_raw:
+        return X, T, E, covariates.columns, df_raw
+    return X, T, E, covariates.columns
+
+
+def load_dataset_with_splits(
+    dataset='METABRIC',
+    path='./',
+    normalize=True,
+    train_val_test_split=(0.7, 0.15, 0.15),
+    random_state=42,
+    use_tabicl=False,
+    tabicl_mode='deep+raw',
+    verbose=True,
+    **kwargs
+):
+    """
+    Extended loader that returns train/val/test splits with optional TabICL embeddings.
+    """
+    from sklearn.model_selection import train_test_split
+
+    # Load full dataset
+    X, T, E, feature_names = load_dataset(
+        dataset=dataset,
+        path=path,
+        normalize=normalize,
+        **kwargs
+    )
+
+    if verbose:
+        print(f"\nLoaded {dataset}: {X.shape[0]} samples, {X.shape[1]} features")
+        print(f"Events: {E.sum()} ({100*E.sum()/len(E):.1f}%), Censored: {(E==0).sum()} ({100*(E==0).sum()/len(E):.1f}%)")
+
+    # Validate splits
+    train_frac, val_frac, test_frac = train_val_test_split
+    if not np.isclose(train_frac + val_frac + test_frac, 1.0):
+        raise ValueError(f"Split ratios must sum to 1.0, got {sum(train_val_test_split)}")
+
+    # Stratified split: train+val vs test
+    X_trainval, X_test, T_trainval, T_test, E_trainval, E_test = train_test_split(
+        X, T, E,
+        test_size=test_frac,
+        random_state=random_state,
+        stratify=E
+    )
+
+    # Stratified split: train vs val
+    val_frac_adjusted = val_frac / (train_frac + val_frac)
+    X_train, X_val, T_train, T_val, E_train, E_val = train_test_split(
+        X_trainval, T_trainval, E_trainval,
+        test_size=val_frac_adjusted,
+        random_state=random_state,
+        stratify=E_trainval
+    )
+
+    if verbose:
+        print(f"Split: Train={X_train.shape[0]}, Val={X_val.shape[0]}, Test={X_test.shape[0]}")
+
+    # Apply TabICL if requested
+    if use_tabicl:
+        try:
+            # Import strictly here to avoid circular dependency
+            from datasets.tabicl_embeddings import apply_tabicl_embedding
+
+            use_deep = 'deep' in tabicl_mode
+            concat_raw = '+raw' in tabicl_mode
+
+            if verbose:
+                print(f"\nApplying TabICL embedding extraction (mode: {tabicl_mode})...")
+
+            X_train, X_val, X_test, _ = apply_tabicl_embedding(
+                X_train, X_val, X_test,
+                E_train,
+                feature_names=list(feature_names),
+                use_deep_embeddings=use_deep,
+                concat_with_raw=concat_raw,
+                verbose=verbose
+            )
+
+        except ImportError as ie:
+            print(f"WARNING: TabICL import failed: {ie}")
+            print("Install with: pip install tabicl")
+            print("Falling back to raw features.")
+        except Exception as e:
+            print(f"WARNING: TabICL failed ({e}). Using raw features.")
+            import traceback
+            traceback.print_exc()
+
+    return (X_train, T_train, E_train,
+            X_val, T_val, E_val,
+            X_test, T_test, E_test,
+            feature_names)
+
 
 def process_seer(df):
     print("process_seer_dataset")
@@ -137,7 +333,7 @@ def process_seer(df):
     df_ord = df_ord.replace(
       {age: number
         for number, age in enumerate(['00-00 years', '01-04 years', '05-09 years', '10-14 years', '15-19 years', '20-24 years', '25-29 years',
-        '30-34 years', '35-39 years', '40-44 years', '45-49 years', '50-54 years', '55-59 years', 
+        '30-34 years', '35-39 years', '40-44 years', '45-49 years', '50-54 years', '55-59 years',
         '60-64 years', '65-69 years', '70-74 years', '75-79 years', '80-84 years', '85+ years'])
       }).replace({
         grade: number
