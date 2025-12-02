@@ -235,15 +235,14 @@ def baselines_crossevaluate_embeddings(dataset='METABRIC', normalize=True, test_
             "IBS (val)": "Error",
             "Time (s)": "-"
         })
-
     return results
 
 
 if __name__ == "__main__":
     raw_results = baselines_crossevaluate_embeddings(embeddings_flag=None, dataset='PBC')
-    #emb_results = baselines_evaluate_embeddings(embeddings_flag="emb", dataset='SEER')
-    #dummy_results = baselines_evaluate_embeddings(embeddings_flag="dummy", dataset='SEER')
-    #combi_results = baselines_evaluate_embeddings(embeddings_flag="combi", dataset='SEER')
+    emb_results = baselines_crossevaluate_embeddings(embeddings_flag="emb", dataset='PBC')
+    dummy_results = baselines_crossevaluate_embeddings(embeddings_flag="dummy", dataset='PBC')
+    combi_results = baselines_crossevaluate_embeddings(embeddings_flag="combi", dataset='PBC')
 
     # Combine results with a method column
     def combine_results(results_dicts, method_name):
@@ -253,9 +252,9 @@ if __name__ == "__main__":
 
     all_results = pd.concat([
         combine_results(raw_results, "Raw"),
-        #combine_results(emb_results, "TARTE Embeddings"),
-        #combine_results(dummy_results, "TARTE Embeddings with dummy y"),
-        #combine_results(combi_results, "TARTE Embeddings with time and event combined")
+        combine_results(emb_results, "TARTE Embeddings"),
+        combine_results(dummy_results, "TARTE Embeddings with dummy y"),
+        combine_results(combi_results, "TARTE Embeddings with time and event combined")
     ])
 
     # Define metrics

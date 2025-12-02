@@ -87,12 +87,15 @@ def get_embeddings_tarte_cross(X):
     tarte_tab_encoder = TARTE_TableEncoder()
     prep_pipe = Pipeline([("prep", tarte_tab_prepper), ("tabenc", tarte_tab_encoder)])
     # get embeddings
-    train_emb = prep_pipe.fit_transform(X, None)
+    emb = prep_pipe.fit_transform(X, None)
     # Wrap embeddings in DataFrames
     embeddings = pd.DataFrame(
-        train_emb, columns=[f"x{i}" for i in range(train_emb.shape[1])],
+        emb, columns=[f"x{i}" for i in range(emb.shape[1])],
         index=X.index
     )
+    print("Embedding shape:", embeddings.shape)
+    print("Number of samples:", embeddings.shape[0])
+    print("Embedding dimension:", embeddings.shape[1])
     return embeddings
 
 """
@@ -105,12 +108,15 @@ def get_embeddings_dummy_tarte_cross(X):
     # dummy variable
     y_dummy = pd.Series(1, index=np.arange(len(X)))
     # get embeddings
-    train_emb = prep_pipe.fit_transform(X, y_dummy)
+    emb = prep_pipe.fit_transform(X, y_dummy)
     # Wrap embeddings in DataFrames
     embeddings = pd.DataFrame(
-        train_emb, columns=[f"x{i}" for i in range(train_emb.shape[1])],
+        emb, columns=[f"x{i}" for i in range(emb.shape[1])],
         index=X.index
     )
+    print("Embedding shape:", embeddings.shape)
+    print("Number of samples:", embeddings.shape[0])
+    print("Embedding dimension:", embeddings.shape[1])
     return embeddings
 
 """
@@ -121,19 +127,20 @@ def get_embeddings_combination_tarte_cross(X, t, e):
     tarte_tab_prepper = TARTE_TablePreprocessor()
     tarte_tab_encoder = TARTE_TableEncoder()
     prep_pipe = Pipeline([("prep", tarte_tab_prepper), ("tabenc", tarte_tab_encoder)])
-    train_emb_time = pd.DataFrame()
-    test_emb_time = pd.DataFrame()
-    train_emb_event = pd.DataFrame()
-    test_emb_event = pd.DataFrame()
+    emb_time = pd.DataFrame()
+    emb_event = pd.DataFrame()
     # get embeddings
     if t is not None:
-        train_emb_time = prep_pipe.fit_transform(X, t)
+        emb_time = prep_pipe.fit_transform(X, t)
     if e is not None:
-        train_emb_event = prep_pipe.fit_transform(X, e)
-    emb = np.concatenate([train_emb_time, train_emb_event], axis=1)
+        emb_event = prep_pipe.fit_transform(X, e)
+    emb = np.concatenate([emb_time, emb_event], axis=1)
     # Wrap embeddings in DataFrames
     embeddings = pd.DataFrame(
         emb, columns=[f"x{i}" for i in range(emb.shape[1])],
         index=X.index
     )
+    print("Embedding shape:", embeddings.shape)
+    print("Number of samples:", embeddings.shape[0])
+    print("Embedding dimension:", embeddings.shape[1])
     return embeddings
