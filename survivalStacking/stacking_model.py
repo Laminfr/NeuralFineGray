@@ -26,6 +26,12 @@ except ImportError:
     XGBOOST_AVAILABLE = False
     warnings.warn("XGBoost not available. Install with: pip install xgboost")
 
+try:
+    from .tabicl_classifier import TabICLBatchClassifier
+    TABICL_CLASSIFIER_AVAILABLE = True
+except ImportError:
+    TABICL_CLASSIFIER_AVAILABLE = False
+
 from .discrete_time import DiscreteTimeTransformer
 
 
@@ -44,7 +50,8 @@ class SurvivalStackingModel(BaseEstimator):
     interval_strategy : str, default='quantile'
         How to create intervals: 'quantile' or 'uniform'
     classifier : str, default='xgboost'
-        Base classifier to use: 'xgboost', 'lightgbm', or 'logistic'
+        Base classifier to use: 'xgboost', 'lightgbm', 'logistic', or 'tabicl'
+        Note: 'tabicl' uses TabICL directly for binary classification (no embeddings)
     classifier_params : dict, optional
         Parameters for the base classifier
     random_state : int, default=42
@@ -139,6 +146,25 @@ class SurvivalStackingModel(BaseEstimator):
             }
             default_params.update(self.classifier_params)
             return LogisticRegression(**default_params)
+        
+        elif self.classifier == 'tabicl':
+            if not TABICL_CLASSIFIER_AVAILABLE:
+                raise ImportError(
+                    "TabICL classifier not available. "
+                    "Install with: pip install tabicl"
+                )
+            
+            default_params = {
+                'n_estimators': 4,
+                'device': 'cuda',
+                'max_context_samples': 2000,  # Increased for survival stacking
+                'batch_size': 5000,
+                'random_state': self.random_state,
+                'verbose': False
+            }
+            default_params.update(self.classifier_params)
+            # Note: TabICL doesn't use scale_pos_weight, it handles imbalance internally
+            return TabICLBatchClassifier(**default_params)
             
         else:
             raise ValueError(f"Unknown classifier: {self.classifier}")
