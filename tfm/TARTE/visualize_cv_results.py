@@ -172,11 +172,11 @@ def plot1_tarte_impact(data, plots_dir, dataset_config):
     ax.set_facecolor('#fafafa')
     
     # Plot bars
-    bars1 = ax.bar(x - width, raw_vals, width, label=f'Raw Features ({n_features}D)', 
+    bars1 = ax.bar(x - width, raw_vals, width, label=f'Raw Features',
                    color=MODE_COLORS['Raw'], edgecolor='white', linewidth=1.5)
-    bars2 = ax.bar(x, deep_vals, width, label='TARTE (512D)',
+    bars2 = ax.bar(x, deep_vals, width, label='TARTE',
                    color=MODE_COLORS['Deep'], edgecolor='white', linewidth=1.5)
-    bars3 = ax.bar(x + width, dr_vals, width, label=f'TARTE + Raw ({512+n_features}D)',
+    bars3 = ax.bar(x + width, dr_vals, width, label=f'TARTE + Raw',
                    color=MODE_COLORS['Deep+Raw'], edgecolor='white', linewidth=1.5)
     
     # Formatting
@@ -296,7 +296,7 @@ def plot2_temporal_performance(data, plots_dir, dataset_config):
         ax1.bar(x + (i - 1) * width, vals, width, label=ql, 
                color=QUANTILE_COLORS[q], edgecolor='white', alpha=0.85)
     
-    ax1.set_title(f'Raw Features ({n_features}D)', fontsize=13, fontweight='bold')
+    ax1.set_title(f'Raw Features', fontsize=13, fontweight='bold')
     ax1.set_ylabel('C-Index', fontsize=11)
     ax1.set_xticks(x)
     ax1.set_xticklabels(models, fontsize=10)
@@ -313,7 +313,7 @@ def plot2_temporal_performance(data, plots_dir, dataset_config):
         ax2.bar(x + (i - 1) * width, vals, width, label=ql,
                color=QUANTILE_COLORS[q], edgecolor='white', alpha=0.85)
     
-    ax2.set_title(f'TARTE + Raw Features ({512+n_features}D)', fontsize=13, fontweight='bold')
+    ax2.set_title(f'TARTE + Raw Features', fontsize=13, fontweight='bold')
     ax2.set_ylabel('C-Index', fontsize=11)
     ax2.set_xticks(x)
     ax2.set_xticklabels(models, fontsize=10)
@@ -352,7 +352,7 @@ def plot3_discrimination_vs_calibration(data, plots_dir, dataset_config):
     # Markers for different modes
     markers = {'Raw': 'o', 'Deep': 's', 'Deep+Raw': '^'}
     n_features = dataset_config['n_features']
-    mode_labels = {'Raw': f'Raw ({n_features}D)', 'Deep': f'TARTE', 'Deep+Raw': f'TARTE+Raw'}
+    mode_labels = {'Raw': f'Raw', 'Deep': f'TARTE', 'Deep+Raw': f'TARTE+Raw'}
     
     # Collect all values for setting axis limits
     all_c_indices = []
@@ -576,4 +576,4 @@ def main(dataset='metabric'):
 
 
 if __name__ == "__main__":
-    main(dataset='metabric')
+    main(dataset='support')
