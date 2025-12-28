@@ -1,48 +1,56 @@
 """
-Pandas Compatibility Patch for auton_survival and lifelines
+Pandas Compatibility Patch (Why we need it)
 
-The package `auton_survival` and `lifelines` depend on older versions of `pandas` 
-and fail with modern Python environments (Python ≥3.10 and Pandas ≥2.0).
+The package `auton_survival` depends on older versions of `pandas` and `scikit-survival`, and it fails to import correctly on modern Python environments (Python ≥3.10 and Pandas ≥2.0).
+-> We cannot install 'auton_survival' via pip because:
+
+* It tries to compile old versions of `scikit-survival` that are incompatible with modern Python versions.
+* It enforces strict version pins (`numpy <2.0`, `pandas <2.0`, etc.)
+* Build fails with Cython and wheel errors during `scikit-survival` compilation.
+
+Instead of using pip, clone the repository locally:
+
+pip install git+https://github.com/IBM/AutoNSurvival.git
+cd auton-survival
+
+Then open 'pyproject.toml' file and update the dependencies to versions that work with our modern environment like:
+
+python = "^3.8"
+torch = "^2.1"
+numpy = "^1.24"
+pandas = "^2.0"
+tqdm = "^4.66"
+scikit-learn = "^1.6"
+torchvision = "^0.16"
+scikit-survival = "^0.24"
+lifelines = "^0.26"
 
 Several functions inside `lifelines` still rely on deprecated pandas methods such as:
-- Series.iteritems() (removed in pandas 2.2+)
-- DataFrame.describe(datetime_is_numeric=...) (removed in pandas 2.0+)
 
-This patch:
+- Series.iteritems()
+- DataFrame .describe(datetime_is_numeric=...)
+
+These methods were removed or changed in recent pandas releases.
+To avoid breaking code in the entire project, we include a small compatibility patch, which:
+
 1. Restores `Series.iteritems` by redirecting it to `.items`
 2. Wraps DataFrame `.describe()` so unsupported arguments are dropped
 3. Silences deprecated warnings that make the console unreadable
 
-Usage:
-    Instead of: import pandas as pd
-    Use:        from pandas_patch import pd
+This patch is implemented in this file and should be imported instead of pandas:
+
+from pandas_patch import pd
+
+This way, all files that use pandas (pd) automatically benefit from the fix.
 """
-
-import pandas as pd
-import warnings
-
-# Suppress pandas warnings about deprecated features
-warnings.filterwarnings('ignore', category=FutureWarning, module='lifelines')
-warnings.filterwarnings('ignore', category=FutureWarning, module='auton_survival')
-
-# Patch 1: Restore Series.iteritems (removed in pandas 2.2+)
-if not hasattr(pd.Series, "iteritems"):
-    pd.Series.iteritems = pd.Series.items
-
-# Patch 2: Fix DataFrame.describe() compatibility
-_old_describe = pd.DataFrame.describe
-
+import sys
+import pandas as _pd
+if not hasattr(_pd.Series, "iteritems"):
+    _pd.Series.iteritems = _pd.Series.items
+_old_describe = _pd.DataFrame.describe
 def _describe_compat(self, *args, **kwargs):
-    """
-    Wrapper for DataFrame.describe() that removes unsupported arguments.
-    
-    The 'datetime_is_numeric' parameter was removed in pandas 2.0+
-    but lifelines still tries to use it.
-    """
     kwargs.pop("datetime_is_numeric", None)
     return _old_describe(self, *args, **kwargs)
-
-pd.DataFrame.describe = _describe_compat
-
-# Export patched pandas
-__all__ = ['pd']
+_pd.DataFrame.describe = _describe_compat
+pd = _pd
+sys.modules['pandas'] = pd

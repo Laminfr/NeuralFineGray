@@ -28,4 +28,4 @@ CoxExperiment.create(
     path="Results/{}_cox".format(dataset),
     random_seed=random_seed,
     fold=fold
-).train(x, t, e, covariates)  
+).train(x, t, e, covariates)
