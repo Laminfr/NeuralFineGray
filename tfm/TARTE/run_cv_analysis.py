@@ -93,10 +93,10 @@ EXPERIMENT_CLASSES = {
 }
 
 # Modes to evaluate
-MODES = ['deep+raw']#['raw', 'deep', 'deep+raw']
+MODES = ['raw', 'deep', 'deep+raw']
 
 # Models to evaluate (excluding NFG and DeSurv which have dtype issues)
-MODELS = ['XGBoost']#['CoxPH', 'RSF', 'XGBoost', 'DeepSurv']
+MODELS = ['CoxPH', 'RSF', 'XGBoost', 'DeepSurv']
 
 
 def compute_metrics_at_quantiles(predictions, t, e, times):
@@ -287,7 +287,7 @@ def main(dataset='METABRIC'):
     """Main entry point."""
 
     # Set results directory based on dataset
-    results_dir = Path(os.path.join(dir, "tfm", "TARTE", f"results/cv_{dataset.lower()}"))
+    results_dir = Path(os.path.join(dir, f"results/tarte/cv_{dataset.lower()}"))
     results_dir.mkdir(parents=True, exist_ok=True)
 
     print("=" * 60)

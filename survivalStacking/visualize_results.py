@@ -4,7 +4,7 @@ Survival Stacking Results Visualization
 ========================================
 
 This script generates 3 key insight plots comparing Survival Stacking against
-TabICL embedding extraction baselines (CoxPH, RSF, XGBoost, DeepSurv).
+TFM embedding extraction baselines (CoxPH, RSF, XGBoost, DeepSurv).
 
 1. PLOT 1: "Method Comparison by Dataset" (Discrimination)
    - Compares Survival Stacking vs all baseline models
@@ -23,7 +23,7 @@ TabICL embedding extraction baselines (CoxPH, RSF, XGBoost, DeepSurv).
 Usage:
     python visualize_results.py                        # All datasets
     python visualize_results.py --dataset pbc          # Single dataset
-    python visualize_results.py --compare-tabicl       # Include TabICL baselines
+    python visualize_results.py --compare-tfm       # Include TFM baselines
 
 Author: Auto-generated for Survival Stacking benchmark
 """
@@ -41,25 +41,25 @@ from typing import Dict, List, Optional, Tuple
 # ==========================================
 PROJECT_ROOT = Path(__file__).parent.parent
 SURV_STACK_RESULTS_DIR = PROJECT_ROOT / 'results' / 'survival_stacking'
-TABICL_RESULTS_DIR = PROJECT_ROOT / 'tabICL' / 'results'
+TFM_RESULTS_DIR = PROJECT_ROOT / 'results'
 
 # Dataset configurations
 DATASET_CONFIG = {
     'metabric': {
         'name': 'METABRIC',
-        'tabicl_cv_dir': 'cv',
+        'tfm_cv_dir': 'cv_metabric',
         'n_features': 9,
         'description': 'Breast Cancer Dataset'
     },
     'pbc': {
         'name': 'PBC',
-        'tabicl_cv_dir': 'cv_pbc',
+        'tfm_cv_dir': 'cv_pbc',
         'n_features': 25,
         'description': 'Primary Biliary Cirrhosis'
     },
     'support': {
         'name': 'SUPPORT',
-        'tabicl_cv_dir': 'cv_support',
+        'tfm_cv_dir': 'cv_support',
         'n_features': 24,
         'description': 'SUPPORT Study Dataset'
     }
@@ -67,7 +67,7 @@ DATASET_CONFIG = {
 
 # Models to compare
 BASELINE_MODELS = ['CoxPH', 'RSF', 'XGBoost', 'DeepSurv']
-TABICL_MODES = ['raw', 'deep', 'deep+raw']
+TFM_MODES = ['raw', 'deep', 'deep+raw']
 
 # Colors
 MODEL_COLORS = {
@@ -93,13 +93,13 @@ QUANTILE_COLORS = {
 }
 
 
-def load_survival_stacking_results(dataset: str) -> Optional[Dict]:
+def load_survival_stacking_results(dataset: str, model: str) -> Optional[Dict]:
     """Load Survival Stacking results for a dataset."""
     # Try different file patterns
     patterns = [
-        f'{dataset.upper()}_deep+raw_5fold_results.json',
-        f'{dataset.upper()}_deep_5fold_results.json',
-        f'{dataset.upper()}_raw_5fold_results.json',
+        f'{dataset.upper()}_{model.lower()}_deep+raw_5-fold_results.json',
+        f'{dataset.upper()}_{model.lower()}_deep_5-fold_results.json',
+        f'{dataset.upper()}_{model.lower()}_raw_5-fold_results.json',
     ]
     
     results = {}
@@ -121,13 +121,13 @@ def load_survival_stacking_results(dataset: str) -> Optional[Dict]:
     return results if results else None
 
 
-def load_tabicl_baseline_results(dataset: str) -> Optional[Dict]:
-    """Load TabICL baseline results for comparison."""
+def load_tfm_baseline_results(dataset: str, model: str) -> Optional[Dict]:
+    """Load TFM baseline results for comparison."""
     config = DATASET_CONFIG.get(dataset.lower())
     if not config:
         return None
     
-    cv_dir = TABICL_RESULTS_DIR / config['tabicl_cv_dir']
+    cv_dir = TFM_RESULTS_DIR / f'{model.lower()}' / config['tfm_cv_dir']
     if not cv_dir.exists():
         return None
     
@@ -166,7 +166,7 @@ def load_tabicl_baseline_results(dataset: str) -> Optional[Dict]:
     return results
 
 
-def plot1_method_comparison(all_data: Dict, plots_dir: Path):
+def plot1_method_comparison(all_data: Dict, plots_dir: Path, tfm: str):
     """
     PLOT 1: Method Comparison Across Datasets
     
@@ -198,7 +198,7 @@ def plot1_method_comparison(all_data: Dict, plots_dir: Path):
         method_data['SurvivalStacking'].append(ss_data.get('c_index_q50', 0))
         
         # Baselines (use deep+raw mode, fallback to raw)
-        baselines = data.get('tabicl_baselines', {})
+        baselines = data.get('tfm_baselines', {})
         for model in ['CoxPH', 'RSF', 'XGBoost', 'DeepSurv']:
             model_data = baselines.get(model, {})
             # Prefer deep+raw, then deep, then raw
@@ -227,7 +227,7 @@ def plot1_method_comparison(all_data: Dict, plots_dir: Path):
                            rotation=45)
     
     # Formatting
-    ax.set_title('Survival Stacking vs TabICL Baselines\n(C-Index at Median Survival Time, 5-Fold CV)', 
+    ax.set_title(f'Survival Stacking vs {tfm} Baselines\n(C-Index at Median Survival Time, 5-Fold CV)',
                  fontsize=14, fontweight='bold', pad=15)
     ax.set_ylabel('C-Index (↑ better)', fontsize=12)
     ax.set_xlabel('Dataset', fontsize=12)
@@ -259,13 +259,13 @@ def plot1_method_comparison(all_data: Dict, plots_dir: Path):
                 verticalalignment='bottom', bbox=dict(boxstyle='round', facecolor='wheat', alpha=0.8))
     
     plt.tight_layout()
-    output_path = plots_dir / 'plot1_method_comparison.png'
-    plt.savefig(output_path, dpi=300, bbox_inches='tight')
+    output_path = plots_dir / f'plot1_method_comparison_{tfm}.png'
+    plt.savefig(output_path, bbox_inches='tight')
     print(f"Saved: {output_path}")
     plt.close()
 
 
-def plot2_temporal_performance(all_data: Dict, plots_dir: Path):
+def plot2_temporal_performance(all_data: Dict, plots_dir: Path, tfm: str):
     """
     PLOT 2: Performance Across Time Horizons
     
@@ -301,7 +301,7 @@ def plot2_temporal_performance(all_data: Dict, plots_dir: Path):
                     ss_data = data.get('survival_stacking', {}).get('deep+raw', {})
                     vals.append(ss_data.get(f'c_index_{q}', 0))
                 else:
-                    baselines = data.get('tabicl_baselines', {}).get(method, {})
+                    baselines = data.get('tfm_baselines', {}).get(method, {})
                     val = (baselines.get('deep+raw', {}).get(f'c_index_{q}', 0) or
                            baselines.get('deep', {}).get(f'c_index_{q}', 0) or
                            baselines.get('raw', {}).get(f'c_index_{q}', 0))
@@ -333,7 +333,7 @@ def plot2_temporal_performance(all_data: Dict, plots_dir: Path):
                 ss_data = data.get('survival_stacking', {}).get('deep+raw', {})
                 all_vals.extend([ss_data.get(f'c_index_{q}', 0) for q in quantiles])
             else:
-                baselines = data.get('tabicl_baselines', {}).get(method, {})
+                baselines = data.get('tfm_baselines', {}).get(method, {})
                 for mode in ['deep+raw', 'deep', 'raw']:
                     if mode in baselines:
                         all_vals.extend([baselines[mode].get(f'c_index_{q}', 0) for q in quantiles])
@@ -347,13 +347,13 @@ def plot2_temporal_performance(all_data: Dict, plots_dir: Path):
                  fontsize=14, fontweight='bold')
     
     plt.tight_layout()
-    output_path = plots_dir / 'plot2_temporal_performance.png'
-    plt.savefig(output_path, dpi=300, bbox_inches='tight')
+    output_path = plots_dir / f'plot2_temporal_performance_{tfm}.png'
+    plt.savefig(output_path, bbox_inches='tight')
     print(f"Saved: {output_path}")
     plt.close()
 
 
-def plot3_discrimination_vs_calibration(all_data: Dict, plots_dir: Path):
+def plot3_discrimination_vs_calibration(all_data: Dict, plots_dir: Path, tfm: str):
     """
     PLOT 3: Discrimination vs Calibration Trade-off
     
@@ -389,7 +389,7 @@ def plot3_discrimination_vs_calibration(all_data: Dict, plots_dir: Path):
             all_ibs_vals.append(ibs)
         
         # Baselines
-        baselines = data.get('tabicl_baselines', {})
+        baselines = data.get('tfm_baselines', {})
         for model in BASELINE_MODELS:
             model_data = baselines.get(model, {})
             # Use best mode available
@@ -422,7 +422,7 @@ def plot3_discrimination_vs_calibration(all_data: Dict, plots_dir: Path):
     # Formatting
     ax.set_xlabel('Integrated Brier Score (↓ better calibration)', fontsize=12)
     ax.set_ylabel('C-Index at Median Time (↑ better discrimination)', fontsize=12)
-    ax.set_title('Discrimination vs Calibration Trade-off\nSurvival Stacking vs TabICL Baselines', 
+    ax.set_title(f'Discrimination vs Calibration Trade-off\nSurvival Stacking vs {tfm} Baselines',
                  fontsize=14, fontweight='bold', pad=15)
     
     # Dynamic axis limits with padding
@@ -452,16 +452,16 @@ def plot3_discrimination_vs_calibration(all_data: Dict, plots_dir: Path):
     ax.set_axisbelow(True)
     
     plt.tight_layout()
-    output_path = plots_dir / 'plot3_discrimination_vs_calibration.png'
-    plt.savefig(output_path, dpi=300, bbox_inches='tight')
+    output_path = plots_dir / f'plot3_discrimination_vs_calibration_{tfm}.png'
+    plt.savefig(output_path, bbox_inches='tight')
     print(f"Saved: {output_path}")
     plt.close()
 
 
-def print_summary_table(all_data: Dict):
+def print_summary_table(all_data: Dict, model: str):
     """Print a comprehensive summary table of all results."""
     print("\n" + "="*100)
-    print("COMPREHENSIVE RESULTS SUMMARY: Survival Stacking vs TabICL Baselines")
+    print(f"COMPREHENSIVE RESULTS SUMMARY: Survival Stacking vs {model} Baselines")
     print("="*100)
     
     for dataset, data in all_data.items():
@@ -483,7 +483,7 @@ def print_summary_table(all_data: Dict):
                 print(f"{'SurvivalStacking':<20} {mode:<12} {c_idx:<15.4f} {ibs:<12.4f} {'★ Our Method'}")
         
         # Baselines
-        baselines = data.get('tabicl_baselines', {})
+        baselines = data.get('tfm_baselines', {})
         for model in BASELINE_MODELS:
             model_data = baselines.get(model, {})
             for mode in ['raw', 'deep', 'deep+raw']:
@@ -536,6 +536,13 @@ Examples:
         default='all',
         help='Dataset to visualize (default: all)'
     )
+    parser.add_argument(
+        '--model', '-m',
+        type=str,
+        choices=['tarte', 'tabicl', 'tabpfn'],
+        default='all',
+        help='Model to look at'
+    )
     return parser.parse_args()
 
 
@@ -548,6 +555,12 @@ def main():
         datasets = ['metabric', 'pbc', 'support']
     else:
         datasets = [args.dataset]
+
+    # Determine which model to look at
+    if args.model == 'all':
+        models = ['tarte', 'tabicl'] #, 'tabpfn']
+    else:
+        models = [args.model]
     
     # Create plots directory
     plots_dir = SURV_STACK_RESULTS_DIR / 'plots'
@@ -556,38 +569,39 @@ def main():
     print("="*70)
     print("Survival Stacking Results Visualization")
     print("="*70)
-    
-    # Load all data
-    all_data = {}
-    for dataset in datasets:
-        print(f"\nLoading {dataset.upper()}...")
-        
-        data = {
-            'survival_stacking': load_survival_stacking_results(dataset),
-            'tabicl_baselines': load_tabicl_baseline_results(dataset)
-        }
-        
-        if data['survival_stacking'] or data['tabicl_baselines']:
-            all_data[dataset] = data
-            ss_modes = list(data['survival_stacking'].keys()) if data['survival_stacking'] else []
-            bl_models = list(data['tabicl_baselines'].keys()) if data['tabicl_baselines'] else []
-            print(f"  Survival Stacking modes: {ss_modes}")
-            print(f"  Baseline models: {bl_models}")
-        else:
-            print(f"  No results found for {dataset}")
-    
-    if not all_data:
-        print("\nNo results found! Run experiments first:")
-        print("  sbatch survivalStacking/run_experiment.sbatch METABRIC deep+raw 5 20")
-        return
-    
-    # Print summary table
-    print_summary_table(all_data)
-    
-    # Generate plots
-    plot1_method_comparison(all_data, plots_dir)
-    plot2_temporal_performance(all_data, plots_dir)
-    plot3_discrimination_vs_calibration(all_data, plots_dir)
+
+    for model in models:
+        # Load all data
+        all_data = {}
+        for dataset in datasets:
+            print(f"\nLoading {dataset.upper()}...")
+
+            data = {
+                'survival_stacking': load_survival_stacking_results(dataset, model),
+                'tfm_baselines': load_tfm_baseline_results(dataset, model)
+            }
+
+            if data['survival_stacking'] or data['tfm_baselines']:
+                all_data[dataset] = data
+                ss_modes = list(data['survival_stacking'].keys()) if data['survival_stacking'] else []
+                bl_models = list(data['tfm_baselines'].keys()) if data['tfm_baselines'] else []
+                print(f"  Survival Stacking modes: {ss_modes}")
+                print(f"  Baseline models: {bl_models}")
+            else:
+                print(f"  No results found for {dataset}")
+
+        if not all_data:
+            print("\nNo results found! Run experiments first:")
+            print("  sbatch survivalStacking/run_experiment.sbatch METABRIC deep+raw 5 20")
+            return
+
+        # Print summary table
+        print_summary_table(all_data, model)
+
+        # Generate plots
+        plot1_method_comparison(all_data, plots_dir, model)
+        plot2_temporal_performance(all_data, plots_dir, model)
+        plot3_discrimination_vs_calibration(all_data, plots_dir,model)
     
     print(f"\n{'='*70}")
     print(f"All plots saved to: {plots_dir}")

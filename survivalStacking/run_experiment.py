@@ -2,14 +2,14 @@
 """
 Survival Stacking Experiment Runner
 
-Benchmarks Survival Stacking with TFM embeddings against DeepSurv and CoxPH
+Benchmarks Survival Stacking with TFM embeddings (TabICl, TARTE) against DeepSurv and CoxPH
 baselines on METABRIC and PBC datasets.
 
 Target: C-Index > 0.8676 (PBC SOTA), IBS < 0.12
 
 Usage:
-    python -m survivalStacking.run_experiment --dataset METABRIC --mode deep+raw
-    python -m survivalStacking.run_experiment --dataset PBC --mode deep --cv 5
+    python -m survivalStacking.run_experiment --dataset METABRIC --model TARTE --mode deep+raw
+    python -m survivalStacking.run_experiment --dataset PBC --model TARTE --mode deep --cv 5
 """
 
 import os
@@ -512,7 +512,7 @@ def run_hyperparameter_tuning(
 
 def main():
     parser = argparse.ArgumentParser(description='Survival Stacking Benchmark')
-    parser.add_argument('--dataset', type=str, default='METABRIC',
+    parser.add_argument('--dataset', type=str, default='PBC',
                         choices=['METABRIC', 'PBC', 'SUPPORT', 'GBSG'],
                         help='Dataset to use')
     parser.add_argument('--model', default='TARTE',
@@ -632,7 +632,7 @@ def main():
         'timestamp': datetime.now().isoformat()
     }
     
-    result_file = output_dir / f"{args.dataset}_{args.mode}_{args.cv}fold_results.json"
+    result_file = output_dir / f"{args.dataset}_{args.model.lower()}_{args.mode}_{args.cv}-fold_results.json"
     with open(result_file, 'w') as f:
         json.dump(results, f, indent=2, default=str)
     

@@ -289,7 +289,7 @@ def main(dataset='METABRIC'):
     
     # Set results directory based on dataset
     PROJECT_ROOT = Path(__file__).resolve().parent.parent.parent
-    results_dir = Path(PROJECT_ROOT, f'tfm/tabICL/results/cv_{dataset.lower()}')
+    results_dir = Path(PROJECT_ROOT, f'results/tabicl/cv_{dataset.lower()}')
     results_dir.mkdir(parents=True, exist_ok=True)
     
     print("="*60)
@@ -352,7 +352,7 @@ def main(dataset='METABRIC'):
 
 if __name__ == "__main__":
     parser = argparse.ArgumentParser(description='Run TabICL CV Analysis')
-    parser.add_argument('--dataset', type=str, default='METABRIC',
+    parser.add_argument('--dataset', type=str, default='SUPPORT',
                         choices=['METABRIC', 'PBC', 'SUPPORT', 'GBSG'],
                         help='Dataset to run analysis on (default: METABRIC)')
     args = parser.parse_args()
