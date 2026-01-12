@@ -106,6 +106,10 @@ class XGBoostFG():
         # Get risk scores
         risk_scores = self.predict_risk(X)
         
+        # Clip risk scores to prevent overflow in exp()
+        # exp(700) ≈ 1e304 which is near float64 max
+        risk_scores = np.clip(risk_scores, -700, 700)
+        
         # Get baseline survival at times
         S0 = np.array([self._km_model.predict(t) for t in times])
         
@@ -114,6 +118,9 @@ class XGBoostFG():
         surv_probs = np.zeros((len(X), len(times)))
         for i, risk in enumerate(risk_scores):
             surv_probs[i, :] = S0 ** np.exp(risk)
+        
+        # Ensure valid probabilities
+        surv_probs = np.clip(surv_probs, 0.0, 1.0)
         
         return surv_probs
 

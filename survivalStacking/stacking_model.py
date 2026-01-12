@@ -228,27 +228,22 @@ class SurvivalStackingModel(BaseEstimator):
             print(f"  - Expanded rows: {len(y_expanded)} (avg {len(y_expanded)/len(T):.1f} per patient)")
             print(f"  - Event rate in expanded data: {100*y_expanded.mean():.2f}%")
         
-        # Adaptive class weighting based on ORIGINAL event rate
-        # Only apply class weighting if original data is imbalanced (event rate < 45%)
-        original_event_rate = E.mean()
+        # Class weighting based on EXPANDED dataset (y_expanded), not original E
+        # This is critical because the person-period format creates severe class imbalance
+        # e.g., 1000 patients with 37% events -> ~10,000 rows with ~3.7% positive rate
         n_neg = (y_expanded == 0).sum()
         n_pos = (y_expanded == 1).sum()
-        raw_imbalance_ratio = n_neg / max(n_pos, 1)
+        expanded_imbalance_ratio = n_neg / max(n_pos, 1)
         
-        if original_event_rate < 0.45:
-            # Imbalanced dataset (like PBC with 37% events)
-            # Use sqrt of ratio for milder correction
-            scale_pos_weight = np.sqrt(raw_imbalance_ratio)
-            weighting_strategy = "sqrt (imbalanced dataset)"
-        else:
-            # Balanced dataset (like METABRIC with 58% events)
-            # No class weighting needed
-            scale_pos_weight = 1.0
-            weighting_strategy = "none (balanced dataset)"
+        # Always apply class weighting based on expanded data imbalance
+        # Use sqrt for milder correction to avoid over-compensation
+        scale_pos_weight = np.sqrt(expanded_imbalance_ratio)
+        weighting_strategy = f"sqrt of expanded ratio ({expanded_imbalance_ratio:.1f}:1)"
         
         if verbose:
-            print(f"  - Original event rate: {100*original_event_rate:.1f}%")
-            print(f"  - Person-period imbalance: {raw_imbalance_ratio:.1f}:1")
+            print(f"  - Original event rate: {100*E.mean():.1f}%")
+            print(f"  - Expanded event rate: {100*y_expanded.mean():.2f}%")
+            print(f"  - Expanded imbalance: {expanded_imbalance_ratio:.1f}:1 (neg:pos)")
             print(f"  - Class weighting: {weighting_strategy}, scale_pos_weight={scale_pos_weight:.2f}")
         
         # Step 3: Create and fit classifier with adaptive class weighting
