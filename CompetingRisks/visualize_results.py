@@ -37,8 +37,8 @@ DATASET_CONFIG = {
         'description': 'Synthetic Competing Risks',
         'color': '#3498db'
     },
-    'seer': {
-        'name': 'SEER',
+    'seer_competing_risk': {
+        'name': 'SEER_competing_risk',
         'description': 'SEER Cancer Data',
         'color': '#e74c3c'
     }
