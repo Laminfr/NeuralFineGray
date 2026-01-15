@@ -1,0 +1,301 @@
+{
+  "dataset": "SEER",
+  "n_samples": 44818,
+  "n_features": 24,
+  "n_risks": 1,
+  "n_folds": 5,
+  "phases": {
+    "stacking": {
+      "folds": [
+        {
+          "phase": "stacking",
+          "n_train": 30476,
+          "n_val": 5378,
+          "n_test": 8964,
+          "n_features": 24,
+          "n_risks": 1,
+          "training_time": 5.797916650772095,
+          "status": "success",
+          "c_index_risk1": 0.8836399469043917,
+          "ibs_risk1": 0.1306798769879878,
+          "c_index_mean": 0.8836399469043917,
+          "ibs_mean": 0.1306798769879878,
+          "fold": 0
+        },
+        {
+          "phase": "stacking",
+          "n_train": 30476,
+          "n_val": 5378,
+          "n_test": 8964,
+          "n_features": 24,
+          "n_risks": 1,
+          "training_time": 5.692326784133911,
+          "status": "success",
+          "c_index_risk1": 0.8870615335223341,
+          "ibs_risk1": 0.11660715992825135,
+          "c_index_mean": 0.8870615335223341,
+          "ibs_mean": 0.11660715992825135,
+          "fold": 1
+        },
+        {
+          "phase": "stacking",
+          "n_train": 30476,
+          "n_val": 5378,
+          "n_test": 8964,
+          "n_features": 24,
+          "n_risks": 1,
+          "training_time": 6.0296595096588135,
+          "status": "success",
+          "c_index_risk1": 0.8922278659115971,
+          "ibs_risk1": 0.12095109066694426,
+          "c_index_mean": 0.8922278659115971,
+          "ibs_mean": 0.12095109066694426,
+          "fold": 2
+        },
+        {
+          "phase": "stacking",
+          "n_train": 30477,
+          "n_val": 5378,
+          "n_test": 8963,
+          "n_features": 24,
+          "n_risks": 1,
+          "training_time": 6.14507532119751,
+          "status": "success",
+          "c_index_risk1": 0.8896165662344788,
+          "ibs_risk1": 0.1280548194348491,
+          "c_index_mean": 0.8896165662344788,
+          "ibs_mean": 0.1280548194348491,
+          "fold": 3
+        },
+        {
+          "phase": "stacking",
+          "n_train": 30477,
+          "n_val": 5378,
+          "n_test": 8963,
+          "n_features": 24,
+          "n_risks": 1,
+          "training_time": 5.703729152679443,
+          "status": "success",
+          "c_index_risk1": 0.8859071091975977,
+          "ibs_risk1": 0.1256824294685559,
+          "c_index_mean": 0.8859071091975977,
+          "ibs_mean": 0.1256824294685559,
+          "fold": 4
+        }
+      ],
+      "mean_metrics": {
+        "n_features": 24.0,
+        "n_risks": 1.0,
+        "training_time": 5.873741483688354,
+        "c_index_risk1": 0.88769060435408,
+        "ibs_risk1": 0.12439507529731768,
+        "c_index_mean": 0.88769060435408,
+        "ibs_mean": 0.12439507529731768
+      },
+      "std_metrics": {
+        "n_features": 0.0,
+        "n_risks": 0.0,
+        "training_time": 0.18193261026889085,
+        "c_index_risk1": 0.002975919436588831,
+        "ibs_risk1": 0.005041079172864434,
+        "c_index_mean": 0.002975919436588831,
+        "ibs_mean": 0.005041079172864434
+      }
+    },
+    "nfg": {
+      "folds": [
+        {
+          "phase": "nfg",
+          "n_train": 30476,
+          "n_val": 5378,
+          "n_test": 8964,
+          "n_features": 24,
+          "n_risks": 1,
+          "training_time": 119.45428204536438,
+          "status": "success",
+          "c_index_risk1": 0.848210809790506,
+          "ibs_risk1": 0.11797052087630819,
+          "c_index_mean": 0.848210809790506,
+          "ibs_mean": 0.11797052087630819,
+          "fold": 0
+        },
+        {
+          "phase": "nfg",
+          "n_train": 30476,
+          "n_val": 5378,
+          "n_test": 8964,
+          "n_features": 24,
+          "n_risks": 1,
+          "training_time": 61.10363554954529,
+          "status": "success",
+          "c_index_risk1": 0.8543827034330702,
+          "ibs_risk1": 0.11105198670888959,
+          "c_index_mean": 0.8543827034330702,
+          "ibs_mean": 0.11105198670888959,
+          "fold": 1
+        },
+        {
+          "phase": "nfg",
+          "n_train": 30476,
+          "n_val": 5378,
+          "n_test": 8964,
+          "n_features": 24,
+          "n_risks": 1,
+          "training_time": 45.45760440826416,
+          "status": "success",
+          "c_index_risk1": 0.8559551253768227,
+          "ibs_risk1": 0.11328045978102029,
+          "c_index_mean": 0.8559551253768227,
+          "ibs_mean": 0.11328045978102029,
+          "fold": 2
+        },
+        {
+          "phase": "nfg",
+          "n_train": 30477,
+          "n_val": 5378,
+          "n_test": 8963,
+          "n_features": 24,
+          "n_risks": 1,
+          "training_time": 27.28103256225586,
+          "status": "success",
+          "c_index_risk1": 0.8620317891021799,
+          "ibs_risk1": 0.11686190748715763,
+          "c_index_mean": 0.8620317891021799,
+          "ibs_mean": 0.11686190748715763,
+          "fold": 3
+        },
+        {
+          "phase": "nfg",
+          "n_train": 30477,
+          "n_val": 5378,
+          "n_test": 8963,
+          "n_features": 24,
+          "n_risks": 1,
+          "training_time": 30.238733053207397,
+          "status": "success",
+          "c_index_risk1": 0.8539610269157676,
+          "ibs_risk1": 0.11290260840324567,
+          "c_index_mean": 0.8539610269157676,
+          "ibs_mean": 0.11290260840324567,
+          "fold": 4
+        }
+      ],
+      "mean_metrics": {
+        "n_features": 24.0,
+        "n_risks": 1.0,
+        "training_time": 56.707057523727414,
+        "c_index_risk1": 0.8549082909236694,
+        "ibs_risk1": 0.11441349665132428,
+        "c_index_mean": 0.8549082909236694,
+        "ibs_mean": 0.11441349665132428
+      },
+      "std_metrics": {
+        "n_features": 0.0,
+        "n_risks": 0.0,
+        "training_time": 33.61415601859641,
+        "c_index_risk1": 0.0044242489421724845,
+        "ibs_risk1": 0.002588955074885855,
+        "c_index_mean": 0.0044242489421724845,
+        "ibs_mean": 0.002588955074885855
+      }
+    },
+    "hybrid": {
+      "folds": [
+        {
+          "phase": "hybrid",
+          "n_train": 30476,
+          "n_val": 5378,
+          "n_test": 8964,
+          "n_features": 24,
+          "n_risks": 1,
+          "training_time": 62.28617286682129,
+          "status": "success",
+          "c_index_risk1": 0.8779149587696158,
+          "ibs_risk1": 0.1362724421963712,
+          "c_index_mean": 0.8779149587696158,
+          "ibs_mean": 0.1362724421963712,
+          "fold": 0
+        },
+        {
+          "phase": "hybrid",
+          "n_train": 30476,
+          "n_val": 5378,
+          "n_test": 8964,
+          "n_features": 24,
+          "n_risks": 1,
+          "training_time": 73.09501028060913,
+          "status": "success",
+          "c_index_risk1": 0.8844781817410354,
+          "ibs_risk1": 0.1201784499669183,
+          "c_index_mean": 0.8844781817410354,
+          "ibs_mean": 0.1201784499669183,
+          "fold": 1
+        },
+        {
+          "phase": "hybrid",
+          "n_train": 30476,
+          "n_val": 5378,
+          "n_test": 8964,
+          "n_features": 24,
+          "n_risks": 1,
+          "training_time": 52.53092098236084,
+          "status": "success",
+          "c_index_risk1": 0.8847725270667568,
+          "ibs_risk1": 0.1261192723874501,
+          "c_index_mean": 0.8847725270667568,
+          "ibs_mean": 0.1261192723874501,
+          "fold": 2
+        },
+        {
+          "phase": "hybrid",
+          "n_train": 30477,
+          "n_val": 5378,
+          "n_test": 8963,
+          "n_features": 24,
+          "n_risks": 1,
+          "training_time": 136.9626281261444,
+          "status": "success",
+          "c_index_risk1": 0.8844743389406977,
+          "ibs_risk1": 0.13263537623354604,
+          "c_index_mean": 0.8844743389406977,
+          "ibs_mean": 0.13263537623354604,
+          "fold": 3
+        },
+        {
+          "phase": "hybrid",
+          "n_train": 30477,
+          "n_val": 5378,
+          "n_test": 8963,
+          "n_features": 24,
+          "n_risks": 1,
+          "training_time": 63.70782732963562,
+          "status": "success",
+          "c_index_risk1": 0.8806272368987818,
+          "ibs_risk1": 0.12866565231358634,
+          "c_index_mean": 0.8806272368987818,
+          "ibs_mean": 0.12866565231358634,
+          "fold": 4
+        }
+      ],
+      "mean_metrics": {
+        "n_features": 24.0,
+        "n_risks": 1.0,
+        "training_time": 77.71651191711426,
+        "c_index_risk1": 0.8824534486833775,
+        "ibs_risk1": 0.1287742386195744,
+        "c_index_mean": 0.8824534486833775,
+        "ibs_mean": 0.1287742386195744
+      },
+      "std_metrics": {
+        "n_features": 0.0,
+        "n_risks": 0.0,
+        "training_time": 30.331874854816725,
+        "c_index_risk1": 0.002738415823598562,
+        "ibs_risk1": 0.005515064093803708,
+        "c_index_mean": 0.002738415823598562,
+        "ibs_mean": 0.005515064093803708
+      }
+    }
+  },
+  "timestamp": "2026-01-15T11:17:00.513598"
+}

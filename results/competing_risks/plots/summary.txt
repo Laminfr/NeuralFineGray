@@ -1,0 +1,41 @@
+================================================================================
+COMPETING RISKS BENCHMARK SUMMARY
+================================================================================
+
+Dataset: SYNTHETIC
+Risks: 2
+------------------------------------------------------------
+Method                    C-Index              IBS                 
+------------------------------------------------------------
+Multi-Class XGBoost       0.7246 ± 0.0047      0.2089 ± 0.0011     
+Neural Fine-Gray          0.6997 ± 0.0044      0.1930 ± 0.0011     
+Hybrid (NFG + XGB)        0.7216 ± 0.0021      0.2102 ± 0.0012     
+
+Per-Risk Breakdown:
+  Risk 1:
+    Multi-Class XGBoost: C-Index=0.7253, IBS=0.2095
+    Neural Fine-Gray: C-Index=0.7011, IBS=0.1939
+    Hybrid (NFG + XGB): C-Index=0.7207, IBS=0.2112
+  Risk 2:
+    Multi-Class XGBoost: C-Index=0.7240, IBS=0.2084
+    Neural Fine-Gray: C-Index=0.6983, IBS=0.1920
+    Hybrid (NFG + XGB): C-Index=0.7225, IBS=0.2091
+
+================================================================================
+
+Dataset: SEER
+Risks: 1
+------------------------------------------------------------
+Method                    C-Index              IBS                 
+------------------------------------------------------------
+Multi-Class XGBoost       0.8877 ± 0.0030      0.1244 ± 0.0050     
+Neural Fine-Gray          0.8549 ± 0.0044      0.1144 ± 0.0026     
+Hybrid (NFG + XGB)        0.8825 ± 0.0027      0.1288 ± 0.0055     
+
+Per-Risk Breakdown:
+  Risk 1:
+    Multi-Class XGBoost: C-Index=0.8877, IBS=0.1244
+    Neural Fine-Gray: C-Index=0.8549, IBS=0.1144
+    Hybrid (NFG + XGB): C-Index=0.8825, IBS=0.1288
+
+================================================================================
