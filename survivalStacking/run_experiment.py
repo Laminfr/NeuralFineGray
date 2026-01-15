@@ -396,6 +396,7 @@ def run_cv_experiment(
                 verbose=(verbose and fold_idx == 0)  # Only verbose on first fold
             )
         elif model == "TabPFN":
+            # ToDo
             # Apply TabPFN embeddings
             X_train_emb, X_val_emb, X_test_emb = apply_tabpfn_embeddings()
         elif model == "TARTE":

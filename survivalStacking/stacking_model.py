@@ -157,6 +157,7 @@ class SurvivalStackingModel(BaseEstimator):
         elif self.classifier == 'logistic':
             from sklearn.linear_model import LogisticRegression
             default_params = {
+                'solver': 'saga',
                 'penalty': 'l2',
                 'C': 1.0,
                 'max_iter': 1000,
