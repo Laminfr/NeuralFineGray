@@ -22,15 +22,15 @@ import warnings
 
 # Use existing modules
 from datasets.datasets import load_dataset
-from .utils import (
+from utils import (
     get_competing_risks_datasets,
     get_evaluation_times,
     evaluate_competing_risks_model,
     aggregate_metrics
 )
-from .stacking_multiclass import MultiClassSurvivalStacking
-from .nfg_wrapper import NFGCompetingRisks
-from .hybrid_model import HybridNFGStacking
+from stacking_multiclass import MultiClassSurvivalStacking
+from nfg_wrapper import NFGCompetingRisks
+from hybrid_model import HybridNFGStacking
 
 
 # Default configurations
@@ -387,7 +387,7 @@ if __name__ == '__main__':
     import argparse
     
     parser = argparse.ArgumentParser(description='Run Competing Risks Benchmark')
-    parser.add_argument('--datasets', nargs='+', default=['SYNTHETIC_COMPETING', 'SEER'],
+    parser.add_argument('--datasets', nargs='+', default=['SYNTHETIC_COMPETING', 'SEER_competing_risk'],
                        help='Datasets to evaluate (SEER requires local file at datasets/seer/seernfg.csv)')
     parser.add_argument('--n-folds', type=int, default=5, help='Number of CV folds')
     parser.add_argument('--phases', nargs='+', default=['stacking', 'nfg', 'hybrid'],
