@@ -30,10 +30,10 @@ PROJECT_ROOT = Path(__file__).parent.parent
 sys.path.insert(0, str(PROJECT_ROOT))
 
 from survivalStacking.stacking_model import SurvivalStackingModel
-from survivalStacking.evaluation import compute_survival_metrics
+from survivalStacking.evaluation import compute_survival_metrics, pairwise_t_test_vs_baseline
 from survivalStacking.run_experiment import load_dataset_for_survival
 
-ALL_BASELINES = []#['xgboost', 'lightgbm', 'logistic']
+ALL_BASELINES = ['xgboost', 'lightgbm', 'logistic']
 
 def run_single_fold_comparison(
     X_train: np.ndarray,
@@ -261,12 +261,15 @@ def run_cv_comparison(
                     'ibs_std': np.std([r.get('ibs', 0) for r in approach_results]),
                     'n_folds': len(approach_results)
                 }
-    
+
+    t_test_results = pairwise_t_test_vs_baseline(fold_results, baseline='TabICL', metric='c_index_q50')
+
     return {
         'dataset': dataset,
         'n_folds': n_folds,
         'config': config,
         'fold_results': fold_results,
+        't_test_vs_baseline': t_test_results,
         'summary': summary
     }
 
@@ -299,6 +302,35 @@ def print_summary(results: Dict):
                           key=lambda k: valid_approaches[k]['c_index_q50_mean'])
         print(f"\nBest approach: {best_approach} "
               f"(C-Index: {valid_approaches[best_approach]['c_index_q50_mean']:.4f})")
+
+        # -------------------------------
+        # Statistical significance section
+        # -------------------------------
+        t_tests = results.get('t_test_vs_baseline', {})
+
+        def significance_stars(p):
+            if p < 0.001:
+                return '***'
+            elif p < 0.01:
+                return '**'
+            elif p < 0.05:
+                return '*'
+            else:
+                return 'ns'
+
+        if t_tests:
+            print(f"\nPaired t-tests vs baseline (TabICL):")
+            print(f"{'Method':<30} {'Mean diff':<12} {'p-value':<10} {'Sig'}")
+            print("-" * 65)
+
+            for method, stats in sorted(t_tests.items()):
+                p = stats['p_value']
+                sig = significance_stars(p) if not np.isnan(p) else 'NA'
+                diff = stats.get('mean_diff', float('nan'))
+
+                print(f"{method:<30} {diff:+.4f}     {p:.4f}    {sig}")
+
+            print("\nSignificance codes: *** p<0.001, ** p<0.01, * p<0.05, ns not significant")
 
 
 def main():
