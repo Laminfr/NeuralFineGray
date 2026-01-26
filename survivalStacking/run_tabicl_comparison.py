@@ -30,9 +30,10 @@ PROJECT_ROOT = Path(__file__).parent.parent
 sys.path.insert(0, str(PROJECT_ROOT))
 
 from survivalStacking.stacking_model import SurvivalStackingModel
-from survivalStacking.evaluation import compute_survival_metrics
+from survivalStacking.evaluation import compute_survival_metrics, pairwise_t_test_vs_baseline
 from survivalStacking.run_experiment import load_dataset_for_survival
 
+ALL_BASELINES = ['xgboost', 'lightgbm', 'logistic']
 
 def run_single_fold_comparison(
     X_train: np.ndarray,
@@ -62,77 +63,99 @@ def run_single_fold_comparison(
         'interval_strategy': config.get('interval_strategy', 'quantile'),
         'random_state': config.get('random_state', 42)
     }
-    
-    # === Approach 1: XGBoost on raw features (baseline) ===
-    if verbose:
-        print(f"\n  [1/3] XGBoost on raw features...")
-    
-    model_xgb = SurvivalStackingModel(
-        classifier='xgboost',
-        classifier_params={
-            'n_estimators': config.get('n_estimators', 200),
-            'max_depth': config.get('max_depth', 5),
-            'learning_rate': config.get('learning_rate', 0.05),
-        },
-        **model_config
-    )
-    model_xgb.fit(X_train, T_train, E_train, verbose=False)
-    
-    eval_times = model_xgb.transformer_.get_interval_times()
-    survival_xgb = model_xgb.predict_survival(X_test)
-    
-    results['xgboost_raw'] = compute_survival_metrics(
-        T_test, E_test, survival_xgb, eval_times, T_train, E_train
-    )
-    
-    if verbose:
-        print(f"      C-Index: {results['xgboost_raw'].get('c_index_q50', 0):.4f}, "
-              f"IBS: {results['xgboost_raw'].get('ibs', 0):.4f}")
-    
-    # === Approach 2: XGBoost on TabICL embeddings ===
-    if verbose:
-        print(f"  [2/3] XGBoost on TabICL embeddings...")
-    
-    try:
-        from datasets.tabicl_embeddings import apply_tabicl_embedding
-        
-        X_train_emb, _, X_test_emb, _ = apply_tabicl_embedding(
-            X_train, X_train[:10], X_test,  # Dummy validation
-            E_train,
-            feature_names=feature_names,
-            use_deep_embeddings=True,
-            concat_with_raw=True,  # deep+raw mode
-            verbose=False
-        )
-        
-        model_xgb_emb = SurvivalStackingModel(
-            classifier='xgboost',
-            classifier_params={
+
+    for baseline in ALL_BASELINES:
+        results_baseline = {}
+
+        if baseline == 'xgboost':
+            classifier_params = {
                 'n_estimators': config.get('n_estimators', 200),
                 'max_depth': config.get('max_depth', 5),
                 'learning_rate': config.get('learning_rate', 0.05),
-            },
+            }
+        elif baseline == 'logistic':
+            classifier_params = {
+                'C': config.get('C', 0.1),
+                'tol': 1e-3,
+                'penalty': config.get('penalty', 'l2'),
+                'max_iter': config.get('max_iter', 5000),
+                'class_weight': config.get('class_weight', 'balanced'),
+            }
+        elif baseline == 'lightgbm':
+            classifier_params = {
+                'n_estimators': config.get('n_estimators', 200),
+                'max_depth': config.get('max_depth', 5),
+                'learning_rate': config.get('learning_rate', 0.05)
+            }
+        else:
+            raise ValueError(f"Unknown classifier: {baseline}")
+        # === Approach 1: Baseline on raw features ===
+        if verbose:
+            print(f"\n  [1/2] {baseline} on raw features...")
+
+        model_baseline = SurvivalStackingModel(
+            classifier=baseline,
+            classifier_params=classifier_params,
             **model_config
         )
-        model_xgb_emb.fit(X_train_emb, T_train, E_train, verbose=False)
-        
-        survival_xgb_emb = model_xgb_emb.predict_survival(X_test_emb)
-        
-        results['xgboost_embeddings'] = compute_survival_metrics(
-            T_test, E_test, survival_xgb_emb, eval_times, T_train, E_train
+        model_baseline.fit(X_train, T_train, E_train, verbose=False)
+
+        eval_times = model_baseline.transformer_.get_interval_times()
+        survival_baseline = model_baseline.predict_survival(X_test)
+
+        results_baseline[f'{baseline}_raw'] = compute_survival_metrics(
+            T_test, E_test, survival_baseline, eval_times, T_train, E_train
         )
-        
+
         if verbose:
-            print(f"      C-Index: {results['xgboost_embeddings'].get('c_index_q50', 0):.4f}, "
-                  f"IBS: {results['xgboost_embeddings'].get('ibs', 0):.4f}")
-    except Exception as e:
+            print(f"      C-Index: {results_baseline[f'{baseline}_raw'].get('c_index_q50', 0):.4f}, "
+                  f"IBS: {results_baseline[f'{baseline}_raw'].get('ibs', 0):.4f}")
+
+        # === Approach 2: XGBoost on TabICL embeddings ===
         if verbose:
-            print(f"      FAILED: {e}")
-        results['xgboost_embeddings'] = {'error': str(e)}
+            print(f"  [2/2] {baseline} on TabICL embeddings...")
+
+        try:
+            from datasets.tabicl_embeddings import apply_tabicl_embedding
+
+            X_train_emb, _, X_test_emb, _ = apply_tabicl_embedding(
+                X_train, X_train[:10], X_test,  # Dummy validation
+                E_train,
+                feature_names=feature_names,
+                use_deep_embeddings=True,
+                concat_with_raw=True,  # deep+raw mode
+                verbose=False
+            )
+
+            model_baseline_emb = SurvivalStackingModel(
+                classifier=baseline,
+                classifier_params=classifier_params,
+                **model_config
+            )
+            model_baseline_emb.fit(X_train_emb, T_train, E_train, verbose=False)
+
+            eval_times = model_baseline_emb.transformer_.get_interval_times()
+            survival_baseline_emb = model_baseline_emb.predict_survival(X_test_emb)
+
+            results_baseline[f'{baseline}_embeddings'] = compute_survival_metrics(
+                T_test, E_test, survival_baseline_emb, eval_times, T_train, E_train
+            )
+
+            if verbose:
+                print(f"      C-Index: {results_baseline[f'{baseline}_embeddings'].get('c_index_q50', 0):.4f}, "
+                      f"IBS: {results_baseline[f'{baseline}_embeddings'].get('ibs', 0):.4f}")
+        except Exception as e:
+            if verbose:
+                print(f"      FAILED: {e}")
+            results_baseline[f'{baseline}_embeddings'] = {'error': str(e)}
+
+        results[baseline] = results_baseline
     
+
     # === Approach 3: TabICL direct classification ===
+    tabicl_results = {}
     if verbose:
-        print(f"  [3/3] TabICL direct classifier...")
+        print(f"  [1/1] TabICL direct classifier...")
     
     try:
         model_tabicl = SurvivalStackingModel(
@@ -146,20 +169,23 @@ def run_single_fold_comparison(
             **model_config
         )
         model_tabicl.fit(X_train, T_train, E_train, verbose=False)
-        
+
+        eval_times = model_tabicl.transformer_.get_interval_times()
         survival_tabicl = model_tabicl.predict_survival(X_test)
         
-        results['tabicl_direct'] = compute_survival_metrics(
+        tabicl_results['tabicl_direct'] = compute_survival_metrics(
             T_test, E_test, survival_tabicl, eval_times, T_train, E_train
         )
         
         if verbose:
-            print(f"      C-Index: {results['tabicl_direct'].get('c_index_q50', 0):.4f}, "
-                  f"IBS: {results['tabicl_direct'].get('ibs', 0):.4f}")
+            print(f"      C-Index: {tabicl_results['tabicl_direct'].get('c_index_q50', 0):.4f}, "
+                  f"IBS: {tabicl_results['tabicl_direct'].get('ibs', 0):.4f}")
     except Exception as e:
         if verbose:
             print(f"      FAILED: {e}")
-        results['tabicl_direct'] = {'error': str(e)}
+        tabicl_results['tabicl_direct'] = {'error': str(e)}
+
+    results['TabICL'] = tabicl_results
     
     return results
 
@@ -212,25 +238,38 @@ def run_cv_comparison(
     
     # Aggregate results
     summary = {}
-    for approach in ['xgboost_raw', 'xgboost_embeddings', 'tabicl_direct']:
-        approach_results = [f[approach] for f in fold_results if 'error' not in f.get(approach, {})]
-        
-        if approach_results:
-            summary[approach] = {
-                'c_index_q50_mean': np.mean([r['c_index_q50'] for r in approach_results]),
-                'c_index_q50_std': np.std([r['c_index_q50'] for r in approach_results]),
-                'ibs_mean': np.mean([r.get('ibs', 0) for r in approach_results]),
-                'ibs_std': np.std([r.get('ibs', 0) for r in approach_results]),
-                'n_folds': len(approach_results)
-            }
-        else:
-            summary[approach] = {'error': 'All folds failed'}
-    
+    for baseline in (ALL_BASELINES+['TabICL']):
+        for approach in ['xgboost_raw', 'xgboost_embeddings',
+                         'logistic_raw', 'logistic_embeddings',
+                         'lightgbm_raw', 'lightgbm_embeddings',
+                         'tabicl_direct']:
+
+            approach_results = []
+            for fold in fold_results:
+                # fold[baseline] may contain nested dict for each approach
+                baseline_data = fold.get(baseline, {})
+                approach_data = baseline_data.get(approach)
+
+                if approach_data and 'error' not in approach_data:
+                    approach_results.append(approach_data)
+
+            if approach_results:
+                summary[approach] = {
+                    'c_index_q50_mean': np.mean([r['c_index_q50'] for r in approach_results]),
+                    'c_index_q50_std': np.std([r['c_index_q50'] for r in approach_results]),
+                    'ibs_mean': np.mean([r.get('ibs', 0) for r in approach_results]),
+                    'ibs_std': np.std([r.get('ibs', 0) for r in approach_results]),
+                    'n_folds': len(approach_results)
+                }
+
+    t_test_results = pairwise_t_test_vs_baseline(fold_results, baseline='TabICL', metric='c_index_q50')
+
     return {
         'dataset': dataset,
         'n_folds': n_folds,
         'config': config,
         'fold_results': fold_results,
+        't_test_vs_baseline': t_test_results,
         'summary': summary
     }
 
@@ -264,12 +303,41 @@ def print_summary(results: Dict):
         print(f"\nBest approach: {best_approach} "
               f"(C-Index: {valid_approaches[best_approach]['c_index_q50_mean']:.4f})")
 
+        # -------------------------------
+        # Statistical significance section
+        # -------------------------------
+        t_tests = results.get('t_test_vs_baseline', {})
+
+        def significance_stars(p):
+            if p < 0.001:
+                return '***'
+            elif p < 0.01:
+                return '**'
+            elif p < 0.05:
+                return '*'
+            else:
+                return 'ns'
+
+        if t_tests:
+            print(f"\nPaired t-tests vs baseline (TabICL):")
+            print(f"{'Method':<30} {'Mean diff':<12} {'p-value':<10} {'Sig'}")
+            print("-" * 65)
+
+            for method, stats in sorted(t_tests.items()):
+                p = stats['p_value']
+                sig = significance_stars(p) if not np.isnan(p) else 'NA'
+                diff = stats.get('mean_diff', float('nan'))
+
+                print(f"{method:<30} {diff:+.4f}     {p:.4f}    {sig}")
+
+            print("\nSignificance codes: *** p<0.001, ** p<0.01, * p<0.05, ns not significant")
+
 
 def main():
     parser = argparse.ArgumentParser(
         description='Compare TabICL approaches in Survival Stacking'
     )
-    parser.add_argument('--dataset', type=str, default='METABRIC',
+    parser.add_argument('--dataset', type=str, default='PBC',
                         choices=['METABRIC', 'PBC', 'SUPPORT'],
                         help='Dataset to use')
     parser.add_argument('--cv', type=int, default=5,
