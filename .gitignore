@@ -138,3 +138,18 @@ tfm/TabICL/__pycache__/
 tfm/TARTE/results
 tfm/TARTE/embeddings/
 tfm/TARTE/__pycache__/
+
+# Logs and batch files
+logs/
+*.sbatch
+
+# CompetingRisks directory
+CompetingRisks/
+
+# Results and models
+results/survival_stacking/
+results/tabicl_comparison/
+
+# tabICL outputs
+tabICL/embeddings/
+tabICL/results/

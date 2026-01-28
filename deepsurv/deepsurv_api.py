@@ -38,11 +38,12 @@ class DeepSurv:
     """
     API Wrapper for DeepSurv to match NeuralFineGray/DeSurv interface.
     """
-    def __init__(self, layers=[100, 100], dropout=0.3, lr=1e-3, weight_decay=1e-4, cuda=True):
+    def __init__(self, layers=[100, 100], dropout=0.3, lr=1e-3, weight_decay=1e-4, cuda=True, random_state=42):
         self.layers = layers
         self.dropout = dropout
         self.lr = lr
         self.weight_decay = weight_decay
+        self.random_state = random_state
         self.device = torch.device('cuda' if cuda and torch.cuda.is_available() else 'cpu')
         self.model = None
         self.baseline_survival = None
@@ -71,6 +72,13 @@ class DeepSurv:
         return -torch.sum(log_likelihood) / (torch.sum(events) + 1e-8)
 
     def fit(self, x, t, e, val_data=None, n_iter=1000, bs=256, patience_max=10):
+        # Set seeds for reproducibility
+        torch.manual_seed(self.random_state)
+        if torch.cuda.is_available():
+            torch.cuda.manual_seed(self.random_state)
+            torch.cuda.manual_seed_all(self.random_state)
+        np.random.seed(self.random_state)
+        
         # Handle DataFrames
         if isinstance(x, pd.DataFrame): x = x.values
         if isinstance(t, pd.Series): t = t.values
@@ -80,13 +88,15 @@ class DeepSurv:
         self.model = DeepSurvTorch(self.input_dim, self.layers, self.dropout).to(self.device)
         optimizer = optim.Adam(self.model.parameters(), lr=self.lr, weight_decay=self.weight_decay)
 
-        # Data Loading
+        # Data Loading with reproducible shuffling
+        generator = torch.Generator()
+        generator.manual_seed(self.random_state)
         train_ds = TensorDataset(
             torch.FloatTensor(x).to(self.device),
             torch.FloatTensor(t).to(self.device),
             torch.FloatTensor(e).to(self.device)
         )
-        train_loader = DataLoader(train_ds, batch_size=bs, shuffle=True)
+        train_loader = DataLoader(train_ds, batch_size=bs, shuffle=True, generator=generator)
 
         # Validation Data Prep
         best_val_loss = float('inf')

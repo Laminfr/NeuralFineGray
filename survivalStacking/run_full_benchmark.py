@@ -24,6 +24,7 @@ import sys
 import argparse
 import json
 import time
+import random
 from datetime import datetime
 from pathlib import Path
 from typing import Dict, List, Tuple, Optional
@@ -32,7 +33,24 @@ import traceback
 
 import numpy as np
 import pandas as pd
+import torch
 from sklearn.model_selection import StratifiedKFold
+
+# Global seed for reproducibility
+GLOBAL_SEED = 42
+
+
+def set_all_seeds(seed: int = GLOBAL_SEED):
+    """Set all random seeds for reproducibility."""
+    random.seed(seed)
+    np.random.seed(seed)
+    torch.manual_seed(seed)
+    if torch.cuda.is_available():
+        torch.cuda.manual_seed(seed)
+        torch.cuda.manual_seed_all(seed)
+        torch.backends.cudnn.deterministic = True
+        torch.backends.cudnn.benchmark = False
+    os.environ['PYTHONHASHSEED'] = str(seed)
 
 # Add project root to path
 PROJECT_ROOT = Path(__file__).parent.parent
@@ -244,6 +262,7 @@ def run_xgboost_survival_fold(
             min_child_weight=10,
             subsample=0.8,
             colsample_bytree=0.8,
+            random_state=42,
         )
         model.fit(X_train, T_train, E_train)
 
@@ -287,7 +306,7 @@ def run_deepsurv_fold(
         from deepsurv.deepsurv_api import DeepSurv
 
         model = DeepSurv(
-            layers=[100, 100], dropout=0.3, lr=1e-3, weight_decay=1e-4, cuda=True
+            layers=[100, 100], dropout=0.3, lr=1e-3, weight_decay=1e-4, cuda=True, random_state=42
         )
         model.fit(
             X_train,
@@ -802,6 +821,9 @@ def print_results_table(results: Dict, dataset: str):
 
 
 def main():
+    # Set global seeds at the very beginning
+    set_all_seeds(GLOBAL_SEED)
+    
     parser = argparse.ArgumentParser(description="Full Survival Stacking Benchmark")
 
     parser.add_argument(

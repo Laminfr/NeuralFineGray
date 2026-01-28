@@ -38,8 +38,7 @@ from typing import Dict, List, Optional, Tuple
 # CONFIGURATION
 # ==========================================
 PROJECT_ROOT = Path(__file__).parent.parent
-#RESULTS_DIR = PROJECT_ROOT / 'results' / 'survival_stacking'
-RESULTS_DIR = Path("/vol/miltank/users/frou/Documents/TFM_for_medical_prognosis/surv_stack_results/summary")
+RESULTS_DIR = PROJECT_ROOT / 'results' / 'survival_stacking'
 
 # Dataset configurations
 DATASET_CONFIG = {
