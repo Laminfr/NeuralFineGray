@@ -330,10 +330,14 @@ def print_metrics(metrics: Dict[str, float], model_name: str = "Model"):
     print("-" * 40)
 
 
-def pairwise_t_test_vs_baseline(fold_results, baseline='TabICL', baseline_method='tabicl_raw', metric='c_index_q50'):
+def pairwise_t_test_vs_baseline(fold_results, baseline='TabICL', baseline_method=None, metric='c_index_q50'):
     """
     Perform pairwise t-tests of all approaches against a baseline method.
     """
+    if baseline_method is None:
+        raise ValueError(
+            "baseline_method must be provided (e.g., 'tabpfn_direct' or 'xgboost_raw')."
+        )
     # 1. Identify all competing approaches (excluding baseline)
     all_approaches = set()
     baselines_approaches = set()
@@ -353,8 +357,16 @@ def pairwise_t_test_vs_baseline(fold_results, baseline='TabICL', baseline_method
 
         for fold in fold_results:
             try:
-                baseline_val = fold[baseline][baseline_method][metric]
-                approach_val = fold[model_family][method_name][metric]
+                baseline_metrics = fold[baseline][baseline_method][metric]
+                approach_metrics = fold[model_family][method_name][metric]
+
+                if (not isinstance(baseline_metrics, dict)) or ('error' in baseline_metrics):
+                    continue
+                if (not isinstance(approach_metrics, dict)) or ('error' in approach_metrics):
+                    continue
+
+                baseline_val = baseline_metrics[metric]
+                approach_val = approach_metrics[metric]
 
                 baseline_array.append(baseline_val)
                 approach_array.append(approach_val)
