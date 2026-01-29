@@ -49,23 +49,40 @@ def load_dataset(dataset='SUPPORT', path='./', normalize=True, return_raw=False,
     elif dataset == 'SYNTHETIC':
         df = datasets.rr_nl_nhp.read_df()
         df = df.drop([c for c in df.columns if 'true' in c], axis = 'columns')
-    elif dataset == 'SEER':
+    elif dataset == 'SEER_competing_risk':
         dir = os.path.dirname(os.path.abspath(__file__))
-        path = Path(os.path.join(dir, "seer", "seernfg_cleaned.csv"))
+        path = Path(os.path.join(dir, "seer", "seernfg_cleaned_competing_risk.csv"))
         if path.is_file():
             df = pd.read_csv(path)
             print("Using cleaned and reduced SEER dataset!")
         else:
             path = os.path.join(dir, "seer", "seernfg.csv")
             df = pd.read_csv(path, dtype={3: "string"})
-            df = process_seer(df)
+            df = process_seer(df, single_risk=False)
+            df['duration'] += EPS  # Avoid problem of the minimum value 0
+            df.columns = [re.sub(r"[<>\[\]]", "_", str(col)).strip() for col in df.columns]
+            for col in df.columns:
+                if pd.api.types.is_numeric_dtype(df[col]):
+                    df[col] = pd.to_numeric(df[col], errors='coerce', downcast='float')
+            df = stratified_reduce(df, frac=0.01)  # keep 10% of rows
+            df.to_csv(os.path.join(dir, "seer", "seernfg_cleaned_competing_risk.csv"), index=False)
+    elif dataset == 'SEER_single_risk':
+        dir = os.path.dirname(os.path.abspath(__file__))
+        path = Path(os.path.join(dir, "seer", "seernfg_cleaned_single_risk.csv"))
+        if path.is_file():
+            df = pd.read_csv(path)
+            print("Using cleaned and reduced SEER dataset!")
+        else:
+            path = os.path.join(dir, "seer", "seernfg.csv")
+            df = pd.read_csv(path, dtype={3: "string"})
+            df = process_seer(df, single_risk=True)
             df['duration'] += EPS # Avoid problem of the minimum value 0
             df.columns = [re.sub(r"[<>\[\]]", "_", str(col)).strip() for col in df.columns]
             for col in df.columns:
                 if pd.api.types.is_numeric_dtype(df[col]):
                     df[col] = pd.to_numeric(df[col], errors='coerce', downcast='float')
             df = stratified_reduce(df, frac=0.01)  # keep 10% of rows
-            df.to_csv(os.path.join(dir, "seer", "seernfg_cleaned.csv"), index=False)
+            df.to_csv(os.path.join(dir, "seer", "seernfg_cleaned_single_risk.csv"), index=False)
     elif dataset == 'SYNTHETIC_COMPETING':
         df = pd.read_csv('https://raw.githubusercontent.com/chl8856/DeepHit/master/sample%20data/SYNTHETIC/synthetic_comprisk.csv')
         df = df.drop(columns = ['true_time', 'true_label']).rename(columns = {'label': 'event', 'time': 'duration'})
@@ -273,7 +290,7 @@ def load_dataset_with_splits(
             feature_names)
 
 
-def process_seer(df):
+def process_seer(df, single_risk=False):
     # Remove multiple visits
     df = df.groupby('Patient ID').first().drop(columns= ['Site recode ICD-O-3/WHO 2008']).copy()
 
@@ -291,9 +308,24 @@ def process_seer(df):
     for col in df.select_dtypes(include='object').columns:
         df[col] = df[col].where(df[col].notna(), np.nan)
     df['duration'] = df['duration'].astype(float)
-    df['event'] = (df["SEER cause-specific death classification"] == "Dead (attributable to this cancer dx)").astype(int) # Death
+    if single_risk:
+        df['event'] = (df["SEER cause-specific death classification"] == "Dead (attributable to this cancer dx)").astype(int) # Death
+    else:
+        def label_event(row):
+            csd = row['SEER cause-specific death classification']
+            cod = row['COD to site recode']
+            if csd == 'Dead (attributable to this cancer dx)': # cancer death
+                return 1
+            elif csd == 'Alive or dead of other cause' and cod == 'Alive': # alive
+                return 0
+            elif csd == 'Alive or dead of other cause' and cod != 'Alive': # death due to other cause
+                return 2
+            else:
+                return 0  # default to censored
+        df['event'] = df.apply(label_event, axis=1)
 
     df = df.drop(columns = ["COD to site recode"])
+    df = df.drop(columns=["SEER cause-specific death classification"])
 
     # Imput and encode categorical
     ## Categorical
