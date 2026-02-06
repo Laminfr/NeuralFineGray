@@ -2,31 +2,47 @@
 
 Survival analysis framework with Neural Fine-Gray models, Survival Stacking, and foundation model embeddings (TabICL, TabPFN, TARTE).
 
-## Requirements
+## Environment Setup
+
+Two environments are available depending on the embedding method:
+
+### TabICL/TabPFN Environment
 
 ```bash
-# Create and activate environment
-conda create -n nfg python=3.10
-conda activate nfg
+# Create environment
+conda create -n tabicl_env python=3.10
+conda activate tabicl_env
 
-# Install core dependencies
-pip install torch numpy pandas scikit-learn lifelines pycox xgboost
-
-# For TabICL embeddings
-pip install tabicl
-
-# For TabPFN embeddings  
-pip install tabpfn
-
-# For TARTE embeddings
-pip install tarte-ai
+# Install dependencies
+pip install -r requirements/requirements_tabicl_tabpfn.txt
 ```
 
-Set HuggingFace token for TabPFN access:
+### TARTE Environment
+
+```bash
+# Create environment
+conda create -n tarte_env python=3.11
+conda activate tarte_env
+
+# Install dependencies
+pip install -r requirements/requirements_tarte.txt
+```
+
+### HuggingFace Token (for TabPFN)
+
 ```bash
 export HF_TOKEN="your_token_here"
 # Or create .env file with: HF_TOKEN=your_token_here
 ```
+
+## Core Concepts
+
+This framework provides four main experimental pipelines:
+
+1. **Baseline Experiments** - Individual survival models (CoxPH, DeepSurv, RSF, XGBoost, NFG) with hyperparameter tuning
+2. **Tabular Foundation Model Embeddings** - Enhance survival models with TabICL, TabPFN, or TARTE embeddings
+3. **Survival Stacking** - Ensemble methods combining multiple base learners with optional embeddings
+4. **Competing Risks Analysis** - Multi-event survival models using discrete-time approaches
 
 ## Available Datasets
 
@@ -35,287 +51,59 @@ export HF_TOKEN="your_token_here"
 | METABRIC | Binary survival | Breast cancer, ~2000 samples |
 | SUPPORT | Binary survival | ICU mortality, ~9000 samples |
 | PBC | Binary survival | Primary biliary cirrhosis, ~418 samples |
-| GBSG | Binary survival | German breast cancer study |
 | SYNTHETIC_COMPETING | Competing risks | Synthetic data with 2 event types |
 | SEER_competing_risk | Competing risks | Cancer registry (requires local file) |
 
----
+## Experiment Guides
 
-## 1. Baseline Experiments (Raw Features)
+Each pipeline has detailed step-by-step instructions in its own README:
 
-Run individual survival models on raw features with hyperparameter search.
+### 1. Baseline Experiments
+📖 See [experiments/README.md](experiments/README.md) for detailed instructions on:
+- Running individual models (CoxPH, DeepSurv, RSF, XGBoost, NFG)
+- Hyperparameter search configuration
+- Using raw features or TabPFN embeddings
+- SLURM batch job submission
 
-### Command Line
+### 2. Tabular Foundation Model Embeddings
+📖 See [tfm/README.md](tfm/README.md) for detailed instructions on:
+- Generating TabICL, TabPFN, or TARTE embeddings
+- Running cross-validation experiments
+- Comparing raw vs deep vs deep+raw feature modes
+- Environment-specific requirements
+
+### 3. Survival Stacking
+📖 See [survivalStacking/README.md](survivalStacking/README.md) for detailed instructions on:
+- Running ensemble stacking benchmarks
+- Combining base learners with embeddings
+- Statistical significance testing
+- Visualization of results
+
+### 4. Competing Risks Analysis
+📖 See [CompetingRisks/README.md](CompetingRisks/README.md) for detailed instructions on:
+- Discrete-time multiclass approaches
+- Hybrid NFG models
+- Benchmarking on synthetic and real datasets
+
+## Quick Examples
 
 ```bash
-# Single model on single dataset
+# Baseline experiment
 python -m experiments.run_experiment --dataset METABRIC --model coxph --mode raw
-python -m experiments.run_experiment --dataset SUPPORT --model deepsurv --mode raw
-python -m experiments.run_experiment --dataset PBC --model rsf --mode raw
-python -m experiments.run_experiment --dataset METABRIC --model xgboost --mode raw
-python -m experiments.run_experiment --dataset SUPPORT --model nfg --mode raw
 
-# Run on all datasets
-python -m experiments.run_experiment --dataset all --model coxph --mode raw
-```
-
-### Models
-
-| Model | Flag | Description |
-|-------|------|-------------|
-| CoxPH | --model coxph | Cox Proportional Hazards |
-| DeepSurv | --model deepsurv | Neural network survival |
-| RSF | --model rsf | Random Survival Forest |
-| XGBoost | --model xgboost | Gradient boosting survival |
-| NFG | --model nfg | Neural Fine-Gray |
-
-### Options
-
-```
---dataset     Dataset name (METABRIC, SUPPORT, PBC, GBSG, all)
---model       Model type (coxph, deepsurv, rsf, xgboost, nfg)
---mode        Feature mode (raw, tabpfn)
---fold        Specific CV fold to run (0-4), omit for all folds
---grid-search Number of hyperparameter search iterations (default: 100)
---seed        Random seed (default: 0)
---output-dir  Custom output directory
-```
-
-### SBATCH
-
-```bash
-sbatch examples/baselines/run_all_baselines.sbatch
-```
-
----
-
-## 2. Experiments with TabPFN Embeddings
-
-Run same models but with TabPFN-extracted feature embeddings.
-
-```bash
-python -m experiments.run_experiment --dataset METABRIC --model coxph --mode tabpfn
-python -m experiments.run_experiment --dataset SUPPORT --model deepsurv --mode tabpfn
-python -m experiments.run_experiment --dataset PBC --model rsf --mode tabpfn
-python -m experiments.run_experiment --dataset METABRIC --model xgboost --mode tabpfn
-python -m experiments.run_experiment --dataset SUPPORT --model nfg --mode tabpfn
-```
-
----
-
-## 3. Survival Stacking Benchmark
-
-Comprehensive benchmark comparing stacking methods with different embeddings.
-
-### Methods Compared
-
-1. SurvStack-Raw: Stacking with XGBoost on raw features
-2. SurvStack-TabICL-Emb: Stacking with XGBoost on TabICL embeddings + raw
-3. SurvStack-TabPFN-Emb: Stacking with XGBoost on TabPFN embeddings + raw
-4. SurvStack-TabICL: Stacking with TabICL classifier
-5. SurvStack-TabPFN: Stacking with TabPFN classifier
-6. Baselines: CoxPH, XGBoost, DeepSurv (non-stacked)
-
-### Command Line
-
-```bash
-# Single dataset
+# Survival stacking
 python -m survivalStacking.run_full_benchmark --dataset METABRIC --cv 5
 
-# All datasets
-python -m survivalStacking.run_full_benchmark --dataset all --cv 5
-
-# Custom intervals
-python -m survivalStacking.run_full_benchmark --dataset PBC --n_intervals 15
+# Competing risks
+python -m CompetingRisks.run_benchmark --datasets SYNTHETIC_COMPETING
 ```
 
-### Options
+## Results
 
-```
---dataset      Dataset (METABRIC, SUPPORT, PBC, all)
---cv           Number of CV folds (default: 5)
---n_intervals  Time intervals for stacking (default: 20)
---weighting    Weighting strategy (adaptive, uniform, none)
---verbose      Print progress
-```
+All experiments save results to `results/` with organized subdirectories:
+- `results/experiments/` - Baseline model results
+- `results/tabicl/`, `results/tabpfn/`, `results/tarte/` - Embedding experiments
+- `results/survival_stacking/` - Stacking ensemble results
+- `results/competing_risks/` - Competing risks benchmarks
 
-### SBATCH
-
-```bash
-# Submit job
-sbatch survivalStacking/run_full_benchmark.sbatch METABRIC 5
-
-# Or for all datasets
-sbatch survivalStacking/run_full_benchmark.sbatch all 5
-```
-
-Results saved to: results/survival_stacking/
-
-Visualizations auto-generated via:
-```bash
-python -m survivalStacking.visualize_benchmark_results
-```
-
----
-
-## 4. Competing Risks Benchmark
-
-Benchmark for competing risks data with multiple event types.
-
-### Methods
-
-1. Stacking: Multi-class survival stacking with XGBoost
-2. NFG: Pure Neural Fine-Gray for competing risks
-3. Hybrid: NFG embeddings + XGBoost stacking
-
-### Command Line
-
-```bash
-# Synthetic data
-python -m CompetingRisks.run_benchmark --datasets SYNTHETIC_COMPETING --n-folds 5
-
-# SEER (requires local file at datasets/seer/seernfg.csv)
-python -m CompetingRisks.run_benchmark --datasets SEER_competing_risk --n-folds 5
-
-# All phases on all datasets
-python -m CompetingRisks.run_benchmark --datasets SYNTHETIC_COMPETING SEER_competing_risk --phases stacking nfg hybrid
-```
-
-### Options
-
-```
---datasets   Datasets to evaluate (SYNTHETIC_COMPETING, SEER_competing_risk)
---n-folds    Number of CV folds (default: 5)
---phases     Methods to run (stacking, nfg, hybrid)
---output-dir Output directory
---quiet      Suppress output
-```
-
-### SBATCH
-
-```bash
-sbatch CompetingRisks/run_benchmark.sbatch
-```
-
-Results saved to: results/competing_risks/
-
-Visualizations via:
-```bash
-python -m CompetingRisks.visualize_results
-```
-
----
-
-## 5. Embedding Extraction (Standalone)
-
-Extract embeddings from foundation models for use in other pipelines.
-
-### TabICL Embeddings
-
-```python
-from datasets.tabicl_embeddings import apply_tabicl_embedding
-
-X_train_emb, X_val_emb, X_test_emb, feature_names = apply_tabicl_embedding(
-    X_train, X_val, X_test, 
-    E_train,  # event labels
-    feature_names=original_feature_names,
-    use_deep_embeddings=True,
-    concat_with_raw=True,  # raw + embeddings
-    verbose=True
-)
-```
-
-### TabPFN Embeddings
-
-```python
-from survivalStacking.tools import apply_tabpfn_embeddings
-
-X_train_emb, X_val_emb, X_test_emb = apply_tabpfn_embeddings(
-    X_train, X_val, X_test,
-    E_train,
-    concat_with_raw=True
-)
-```
-
-### TARTE Embeddings
-
-```python
-from datasets.tarte_embeddings import apply_tarte_embedding
-
-X_train_emb, X_val_emb, X_test_emb, feature_names = apply_tarte_embedding(
-    X_train, X_val, X_test,
-    E_train,
-    feature_names=original_feature_names,
-    use_deep_embeddings=True,
-    concat_with_raw=True
-)
-```
-
----
-
-## Project Structure
-
-```
-NeuralFineGray/
-├── experiments/           # Baseline experiments
-│   ├── run_experiment.py  # Unified experiment runner
-│   └── experiment.py      # Experiment classes
-├── survivalStacking/      # Survival stacking methods
-│   ├── run_full_benchmark.py
-│   ├── stacking_model.py
-│   └── discrete_time.py
-├── CompetingRisks/        # Competing risks models
-│   ├── run_benchmark.py
-│   └── discrete_time_multiclass.py
-├── datasets/              # Data loading and embeddings
-│   ├── datasets.py
-│   ├── tabicl_embeddings.py
-│   └── tarte_embeddings.py
-├── nfg/                   # Neural Fine-Gray implementation
-├── coxph/                 # Cox PH implementation
-├── deepsurv/              # DeepSurv implementation
-├── rsf/                   # Random Survival Forest
-├── xgb_survival/          # XGBoost survival
-├── metrics/               # Evaluation metrics
-├── core/                  # Shared utilities
-└── results/               # Output directory
-```
-
----
-
-## Quick Start Examples
-
-### Run all baselines on METABRIC
-
-```bash
-for model in coxph deepsurv rsf xgboost nfg; do
-    python -m experiments.run_experiment --dataset METABRIC --model $model --mode raw
-done
-```
-
-### Full stacking benchmark on PBC
-
-```bash
-python -m survivalStacking.run_full_benchmark --dataset PBC --cv 5 --verbose
-```
-
-### Competing risks on synthetic data
-
-```bash
-python -m CompetingRisks.run_benchmark --datasets SYNTHETIC_COMPETING --phases stacking nfg hybrid
-```
-
----
-
-## Output
-
-All experiments save results as JSON files with:
-- Per-fold metrics (C-index at quantiles, IBS)
-- Mean and std across folds
-- Training times
-- Model configurations
-
-Visualization scripts generate:
-- Bar charts comparing methods
-- Box plots of CV distributions
-- Tables in LaTeX format
+Plots are saved in `plots/` subdirectories within each results folder

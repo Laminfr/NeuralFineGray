@@ -47,22 +47,6 @@ sbatch run_experiment.sbatch DATASET MODEL MODE [GRID] [SEED] [FOLD]
 | xgboost | XGBoost with Cox objective |
 | nfg | Neural Fine-Gray |
 
-## Examples
-
-```bash
-# All models on METABRIC with raw features
-for model in coxph deepsurv rsf xgboost nfg; do
-    sbatch run_experiment.sbatch METABRIC $model raw
-done
-
-# All models on all datasets
-for model in coxph deepsurv rsf xgboost nfg; do
-    sbatch run_experiment.sbatch all $model raw
-done
-
-# Single fold for quick testing
-sbatch run_experiment.sbatch METABRIC coxph raw 50 0 0
-```
 
 ## Output
 
@@ -81,17 +65,6 @@ Logs saved to `logs/`:
 | C-index | Concordance index (discrimination, higher is better) |
 | IBS | Integrated Brier Score (calibration, lower is better) |
 
-## Directory Structure
-
-```
-experiments/
-├── run_experiment.py      # Unified experiment runner
-├── run_experiment.sbatch  # SLURM submission script
-├── experiment.py          # Experiment class definitions
-├── results/               # Output CSV files
-├── logs/                  # SLURM job logs
-└── analysis/              # Jupyter notebooks for visualization
-```
 
 ## Direct Python Usage
 

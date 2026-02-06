@@ -1,6 +1,6 @@
-# Competing Risks Benchmark
+# Competing Risks Analysis
 
-Compares 3 approaches for survival analysis with multiple competing event types.
+This folder contains benchmarking experiments for competing risks models including discrete-time multiclass approaches, hybrid models, NFG wrappers, and stacking methods. Evaluates multiple competing risks approaches across benchmark datasets using 5-fold cross-validation to compare discrimination and calibration metrics.
 
 ## Methods
 
@@ -13,22 +13,47 @@ Compares 3 approaches for survival analysis with multiple competing event types.
 - `SYNTHETIC_COMPETING`: Auto-downloaded synthetic data (2 competing events)
 - `SEER_competing_risk`: Real cancer data (requires `datasets/seer/seernfg.csv`)
 
-## Run Experiment
+## Step-by-Step Guide
+
+### 1. Run Benchmark
 
 ```bash
-# Submit to SLURM (runs SYNTHETIC_COMPETING by default)
-sbatch CompetingRisks/run_benchmark.sbatch
-
-# Or run directly
+# Run on synthetic data
 python -m CompetingRisks.run_benchmark --datasets SYNTHETIC_COMPETING
 
-# With SEER (if you have the data file)
+# Run with SEER (if you have the data file)
 python -m CompetingRisks.run_benchmark --datasets SYNTHETIC_COMPETING SEER_competing_risk
 ```
 
-## Results
+### 2. Check Results
 
-Saved to `results/competing_risks/`:
-- `{dataset}_benchmark_5fold.json` - Metrics per dataset
-- `plots/` - Comparison charts
+Results are saved as JSON files in:
+```
+results/competing_risks/
+```
+
+Example files:
+- `full_benchmark_5fold.json`
+- `seer_benchmark_5fold.json`
+- `synthetic_competing_benchmark_5fold.json`
+
+### 3. Visualize Results
+
+Generate plots:
+
+```bash
+python CompetingRisks/visualize_results.py
+```
+
+Plots are saved to:
+```
+results/competing_risks/plots/
+```
+
+## Logs
+
+SLURM logs are saved in:
+```
+CompetingRisks/logs/
+```
 
