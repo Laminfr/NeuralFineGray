@@ -1,12 +1,14 @@
 import numpy as np
-from pandas_patch import pd
 import xgboost as xgb
 from lifelines import KaplanMeierFitter
+
+from pandas_patch import pd
 
 np.seterr(over='ignore', invalid='ignore')
 
 from metrics.calibration import integrated_brier_score as nfg_integrated_brier
 from metrics.discrimination import truncated_concordance_td as nfg_cindex_td
+
 
 class XGBoostFG():
 

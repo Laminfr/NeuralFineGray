@@ -19,20 +19,18 @@ Usage:
     python -m survivalStacking.run_full_benchmark --dataset all --cv 5
 """
 
-import os
-import sys
 import argparse
 import json
-import time
+import os
 import random
+import sys
+import time
+import traceback
 from datetime import datetime
 from pathlib import Path
-from typing import Dict, List, Tuple, Optional
-import warnings
-import traceback
+from typing import Dict, List, Optional, Tuple
 
 import numpy as np
-import pandas as pd
 import torch
 from sklearn.model_selection import StratifiedKFold
 
@@ -56,13 +54,14 @@ def set_all_seeds(seed: int = GLOBAL_SEED):
 PROJECT_ROOT = Path(__file__).parent.parent
 sys.path.insert(0, str(PROJECT_ROOT))
 
-# Local imports
-from survivalStacking.stacking_model import SurvivalStackingModel
 from survivalStacking.evaluation import (
     compute_survival_metrics,
     concordance_index,
     integrated_brier_score,
 )
+
+# Local imports
+from survivalStacking.stacking_model import SurvivalStackingModel
 
 # Output directory
 RESULTS_DIR = PROJECT_ROOT / "results" / "survival_stacking"
@@ -199,8 +198,9 @@ def run_coxph_fold(
     """Run CoxPH baseline."""
     try:
         # from coxph.coxph_api import CoxPHFG
-        from survivalStacking.tools import CoxPHFG
         import pandas as pd
+
+        from survivalStacking.tools import CoxPHFG
 
         # Convert to DataFrames as expected by CoxPHFG
         feature_cols = [f"x{i}" for i in range(X_train.shape[1])]
@@ -253,7 +253,6 @@ def run_xgboost_survival_fold(
     """Run XGBoost survival baseline (non-stacked, Cox objective)."""
     try:
         from xgb_survival.xgboost_api import XGBoostFG
-        import pandas as pd
 
         model = XGBoostFG(
             n_estimators=200,

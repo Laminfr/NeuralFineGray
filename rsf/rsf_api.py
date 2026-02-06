@@ -1,7 +1,8 @@
 import numpy as np
 
 from nfg.nfg_api import NeuralFineGray
-from .utilities import train_rsf_model, evaluate_rsf_model, summary_output
+
+from .utilities import evaluate_rsf_model, summary_output, train_rsf_model
 
 
 class RSFFG(NeuralFineGray):
@@ -70,8 +71,8 @@ class RSFFG(NeuralFineGray):
         self.fitted = True
         
         # Store training data for metrics
-        self._train_times = y_train['time']
-        self._train_events = y_train['event']
+        self._train_times = t_train
+        self._train_events = e_train
         
         return self
 
@@ -100,9 +101,5 @@ class RSFFG(NeuralFineGray):
         return 1.0 - self.eval_params["surv_probs_val"]
 
 
-def convert_cpu_numpy(tensor):
-    if hasattr(tensor, "detach"):
-        tensor = tensor.detach().cpu().numpy()
-    else:
-        tensor = np.asarray(tensor)
-    return tensor
+# Import from centralized location
+from metrics.utils import convert_cpu_numpy

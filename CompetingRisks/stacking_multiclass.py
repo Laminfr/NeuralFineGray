@@ -13,10 +13,11 @@ Key idea:
   * etc.
 """
 
-import numpy as np
-from typing import Dict, Optional, Tuple, Any
-from sklearn.base import BaseEstimator
 import warnings
+from typing import Any, Dict, Optional
+
+import numpy as np
+from sklearn.base import BaseEstimator
 
 try:
     from xgboost import XGBClassifier
@@ -287,6 +288,7 @@ class MultiClassSurvivalStacking(BaseEstimator):
 if __name__ == '__main__':
     # Test the model
     from datasets.datasets import load_dataset
+
     from .utils import split_data
     
     print("Testing MultiClassSurvivalStacking...")

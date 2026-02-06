@@ -1,5 +1,6 @@
 from nfg.nfg_torch import *
 
+
 class CondODENet(nn.Module):
     """
       Code extracted from https://github.com/djdanks/DeSurv

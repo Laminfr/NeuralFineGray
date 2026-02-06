@@ -11,27 +11,33 @@ Evaluates on SEER and SYNTHETIC_COMPETING datasets using:
 - CIF-based Integrated Brier Score
 """
 
-import numpy as np
 import json
+import random
 import time
+import warnings
 from datetime import datetime
 from pathlib import Path
-from typing import Dict, List, Optional, Any, Tuple
+from typing import Any, Dict, List, Optional
+
+import numpy as np
+import torch
 from sklearn.model_selection import StratifiedKFold
-import warnings
+
+from .hybrid_model import HybridNFGStacking
+from .nfg_wrapper import NFGCompetingRisks
+from .stacking_multiclass import MultiClassSurvivalStacking
+from .utils import aggregate_metrics, evaluate_competing_risks_model
 
 # Use existing modules
 from datasets.datasets import load_dataset
-from utils import (
-    get_competing_risks_datasets,
-    get_evaluation_times,
-    evaluate_competing_risks_model,
-    aggregate_metrics
-)
-from stacking_multiclass import MultiClassSurvivalStacking
-from nfg_wrapper import NFGCompetingRisks
-from hybrid_model import HybridNFGStacking
 
+# Set global seeds for reproducibility
+SEED = 42
+random.seed(SEED)
+np.random.seed(SEED)
+torch.manual_seed(SEED)
+if torch.cuda.is_available():
+    torch.cuda.manual_seed_all(SEED)
 
 # Default configurations
 DEFAULT_STACKING_CONFIG = {

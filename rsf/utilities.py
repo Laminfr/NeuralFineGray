@@ -1,20 +1,17 @@
 import numpy as np
-import pandas as pd
-
 from sksurv.ensemble import RandomSurvivalForest
 from sksurv.util import Surv
 
 # Import the shared data loader
 from datasets.data_loader import load_and_preprocess_data
 
-# Import metrics from neuralfg repository
-import sys
-sys.path.insert(0, '/vol/miltank/users/sajb/Project/NeuralFineGray')
+# Import metrics
 from metrics.calibration import integrated_brier_score
 from metrics.discrimination import truncated_concordance_td
 
 # Import shared utility function
 from xgb_survival.utilities import wrap_np_to_pandas
+
 
 def train_rsf_model(X_train, t_train, e_train, t_val, e_val, n_estimators=200, max_depth=10, min_samples_split=20, 
                     min_samples_leaf=10, random_state=42):

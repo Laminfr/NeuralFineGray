@@ -1,8 +1,7 @@
-from pandas_patch import pd
-from sklearn.preprocessing import StandardScaler
 from sklearn.model_selection import train_test_split
-from pycox.datasets import metabric
 from sksurv.util import Surv
+
+from pandas_patch import pd
 
 # Import directly from the datasets module
 from .datasets import load_dataset

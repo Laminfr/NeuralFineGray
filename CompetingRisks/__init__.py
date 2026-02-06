@@ -26,14 +26,14 @@ Metrics:
 
 # Use existing modules - no duplicate code
 from datasets.datasets import load_dataset
-from metrics.discrimination import truncated_concordance_td
 from metrics.calibration import integrated_brier_score
+from metrics.discrimination import truncated_concordance_td
 
-from .stacking_multiclass import MultiClassSurvivalStacking
-from .nfg_wrapper import NFGCompetingRisks
 from .hybrid_model import HybridNFGStacking
+from .nfg_wrapper import NFGCompetingRisks
 from .run_benchmark import run_full_benchmark, run_single_phase
-from .utils import get_competing_risks_datasets, split_data, get_evaluation_times
+from .stacking_multiclass import MultiClassSurvivalStacking
+from .utils import get_competing_risks_datasets, get_evaluation_times, split_data
 
 __all__ = [
     # Datasets (from existing datasets module)

@@ -26,13 +26,13 @@ Usage:
 """
 
 import argparse
-import matplotlib.pyplot as plt
-import matplotlib.patches as mpatches
-import numpy as np
 import json
-import os
 from pathlib import Path
-from typing import Dict, List, Optional, Tuple
+from typing import Dict, Optional
+
+import matplotlib.patches as mpatches
+import matplotlib.pyplot as plt
+import numpy as np
 
 # ==========================================
 # CONFIGURATION

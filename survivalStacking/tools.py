@@ -1,4 +1,5 @@
-from typing import Tuple, List, Optional
+from typing import List, Optional, Tuple
+
 import numpy as np
 import pandas as pd
 from lifelines import CoxPHFitter

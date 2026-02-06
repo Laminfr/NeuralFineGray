@@ -1,21 +1,17 @@
 import numpy as np
 import pandas as pd
-
 import xgboost as xgb
 from sksurv.util import Surv
 
-from lifelines import KaplanMeierFitter
-
 # Import the shared data loader
 try:
-    from datasets.data_loader import load_and_preprocess_data
+    pass
 except ImportError:
-    from datasets.data_loader import load_and_preprocess_data
+    pass
 
 
 from metrics.calibration import integrated_brier_score
-from metrics.discrimination import truncated_concordance_td
-from metrics.utils import concordance_index_from_risk_scores
+from metrics.utils import concordance_index_from_risk_scores, estimate_survival_from_cox
 
 
 def wrap_np_to_pandas(X, index=None, prefix="x"):
@@ -77,36 +73,6 @@ def train_xgboost_model(
     )
     model.fit(X_train, y_time, sample_weight=y_event)
     return model
-
-
-def estimate_survival_from_cox(
-    risk_scores_test,
-    t_train,
-    e_train,
-    time_grid,
-):
-    """
-    Estimate survival probabilities using Breslow estimator.
-    S(t|x) = S_0(t) ^ exp(risk_score)
-    """
-    # Estimate baseline survival using Kaplan-Meier on training data
-    kmf = KaplanMeierFitter()
-    # For single event survival: event_observed=True when e_train > 0
-    kmf.fit(t_train, event_observed=(e_train > 0))
-
-    # Get baseline survival at time grid points
-    baseline_surv = kmf.survival_function_at_times(time_grid).values
-
-    # Clip risk scores to prevent overflow
-    risk_scores_clipped = np.clip(risk_scores_test, -10, 10)
-
-    # Calculate survival probabilities for each sample
-    # S(t|x) = S_0(t) ^ exp(risk_score)
-    survival_probs = np.vstack(
-        [baseline_surv ** np.exp(risk) for risk in risk_scores_clipped]
-    )
-
-    return survival_probs
 
 
 def evaluate_xgboost_model(model, X_train, t_train, e_train, X_val, t_val, e_val):

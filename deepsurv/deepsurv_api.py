@@ -1,16 +1,11 @@
-import torch
-import torch.nn as nn
-import torch.optim as optim
-from torch.utils.data import TensorDataset, DataLoader
 import numpy as np
 import pandas as pd
-
 import torch
 import torch.nn as nn
 import torch.optim as optim
-from torch.utils.data import TensorDataset, DataLoader
-
 from lifelines import KaplanMeierFitter
+from torch.utils.data import DataLoader, TensorDataset
+
 
 class DeepSurvTorch(nn.Module):
     """Deep Cox Proportional Hazards Network."""

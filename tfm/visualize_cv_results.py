@@ -31,12 +31,13 @@ Usage:
 """
 
 import argparse
-import matplotlib.pyplot as plt
-import numpy as np
 import json
 import os
 import sys
 from pathlib import Path
+
+import matplotlib.pyplot as plt
+import numpy as np
 
 # Add project root to path
 PROJECT_ROOT = Path(__file__).resolve().parent.parent
@@ -112,7 +113,8 @@ QUANTILE_COLORS = {
 # Embedding dimension info
 EMBEDDING_INFO = {
     'tabicl': {'dim': 512, 'display_name': 'TabICL'},
-    'tarte': {'dim': 256, 'display_name': 'TARTE'}  # Adjust if different
+    'tabpfn': {'dim': 512, 'display_name': 'TabPFN'},
+    'tarte': {'dim': 768, 'display_name': 'TARTE'}
 }
 
 
@@ -426,7 +428,7 @@ tfm/TARTE/visualize_cv_results.py scripts.
         '--method', '-m',
         type=str,
         required=True,
-        choices=['tabicl', 'tarte'],
+        choices=['tabicl', 'tabpfn', 'tarte'],
         help='Embedding method to visualize'
     )
     parser.add_argument(

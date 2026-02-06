@@ -1,4 +1,3 @@
-import warnings 
 import numpy as np
 
 from .utils import estimate_ipcw

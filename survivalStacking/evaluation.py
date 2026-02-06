@@ -7,10 +7,10 @@ Computes standard survival analysis metrics:
 - Brier Score at specific times
 """
 
+from typing import Dict, Optional, Tuple
+
 import numpy as np
-from typing import Tuple, Dict, Optional, Union
 from scipy.stats import ttest_rel
-import warnings
 
 
 def concordance_index(

@@ -22,12 +22,11 @@ Reference:
 """
 
 from .discrete_time import DiscreteTimeTransformer
-from .stacking_model import SurvivalStackingModel
 from .evaluation import compute_survival_metrics
+from .stacking_model import SurvivalStackingModel
 
 # Optional TabICL classifier import
 try:
-    from .tabicl_classifier import TabICLBinaryClassifier, TabICLBatchClassifier
     __all__ = [
         'DiscreteTimeTransformer',
         'SurvivalStackingModel', 

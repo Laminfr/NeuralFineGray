@@ -13,10 +13,11 @@ Usage:
 
 import argparse
 import json
-import numpy as np
 from pathlib import Path
-from scipy.stats import ttest_rel
 from typing import Dict, List, Tuple
+
+import numpy as np
+from scipy.stats import ttest_rel
 
 PROJECT_ROOT = Path(__file__).parent.parent
 RESULTS_DIR = PROJECT_ROOT / 'results' / 'survival_stacking'

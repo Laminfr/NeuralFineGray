@@ -19,11 +19,11 @@ Usage:
     model.fit(X, T, E)
 """
 
+import warnings
+
 import numpy as np
 import pandas as pd
-from typing import Optional, Dict, Any
 from sklearn.base import BaseEstimator, ClassifierMixin
-import warnings
 
 try:
     from tabicl import TabICLClassifier

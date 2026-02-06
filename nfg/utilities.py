@@ -1,7 +1,9 @@
-import torch
-import numpy as np
-from tqdm import tqdm
 from copy import deepcopy
+
+import numpy as np
+import torch
+from tqdm import tqdm
+
 
 def get_optimizer(models, lr, optimizer, **kwargs):
 	parameters = list(models.parameters())

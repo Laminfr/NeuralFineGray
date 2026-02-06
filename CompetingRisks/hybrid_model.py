@@ -11,10 +11,10 @@ Key idea:
 - This tests whether deep features help tree-based classifiers
 """
 
+from typing import Any, Dict, List, Optional
+
 import numpy as np
-from typing import Dict, Optional, Tuple, Any, List
 from sklearn.base import BaseEstimator
-import warnings
 
 from .nfg_wrapper import NFGCompetingRisks
 from .stacking_multiclass import MultiClassSurvivalStacking
@@ -299,7 +299,9 @@ class HybridNFGStacking(BaseEstimator):
 if __name__ == '__main__':
     # Test the hybrid model
     import torch
+
     from datasets.datasets import load_dataset
+
     from .utils import split_data
     
     print("Testing HybridNFGStacking...")

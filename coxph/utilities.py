@@ -1,15 +1,16 @@
-import numpy as np
 import warnings
+
+import numpy as np
 from lifelines import CoxPHFitter
 from lifelines.utils import ConvergenceWarning
+
 warnings.filterwarnings("ignore", category=ConvergenceWarning)
 
 
 # Import metrics from neuralfg repository
-import sys
 from metrics.calibration import integrated_brier_score
-from metrics.discrimination import truncated_concordance_td
 from metrics.utils import concordance_index_from_risk_scores
+
 
 def train_cox_model(X_train, T_train, E_train, penalizer=0.01):
     """Train Cox Proportional Hazards model."""

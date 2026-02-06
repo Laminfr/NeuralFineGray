@@ -8,17 +8,19 @@ Features:
 - Optional PCA compression for tree-based models
 - Proper handling of string columns in raw data
 """
-from pandas_patch import pd
 import numpy as np
-np.seterr(over='ignore', invalid='ignore')
-from typing import Tuple, Optional, Union, List
-import warnings
-import torch
-from sklearn.preprocessing import OneHotEncoder
-from sklearn.decomposition import PCA
 
-from tarte_ai import TARTE_TableEncoder, TARTE_TablePreprocessor
+from pandas_patch import pd
+
+np.seterr(over='ignore', invalid='ignore')
+from typing import Tuple
+
+import torch
+from sklearn.decomposition import PCA
 from sklearn.pipeline import Pipeline
+from sklearn.preprocessing import OneHotEncoder
+from tarte_ai import TARTE_TableEncoder, TARTE_TablePreprocessor
+
 
 def _encode_categorical_features(X_train: np.ndarray, X_val: np.ndarray, X_test: np.ndarray, X_dev: np.ndarray=None,
                                  feature_names: list=None, verbose: bool = False) -> Tuple[
@@ -142,6 +144,7 @@ def apply_tarte_embedding(
         concat_with_raw: bool = True,
         pca_for_trees: bool = False,
         pca_n_components: int = 32,
+        random_state: int = 42,
         **tarte_kwargs
 ) -> Tuple[np.ndarray, np.ndarray, np.ndarray, np.ndarray]:
     """
@@ -155,9 +158,16 @@ def apply_tarte_embedding(
         concat_with_raw: Concatenate embeddings with raw features (deep+raw mode)
         pca_for_trees: Apply PCA compression (for tree models like RSF, XGBoost)
         pca_n_components: Target PCA dimensions (default 32)
+        random_state: Random seed for reproducibility (default 42)
 
     Returns: (X_train_emb, X_val_emb, X_test_emb, classifier)
     """
+    # Set seeds for reproducibility
+    np.random.seed(random_state)
+    torch.manual_seed(random_state)
+    if torch.cuda.is_available():
+        torch.cuda.manual_seed_all(random_state)
+    
     if verbose:
         print(f"TARTE: {X_train.shape[0]} samples, {X_train.shape[1]} features")
 

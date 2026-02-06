@@ -1,9 +1,10 @@
-from nfg.nfg_api import NeuralFineGray
-from desurv.desurv_torch import DeSurvTorch
-import desurv.losses as losses
-
-import torch
 import numpy as np
+import torch
+
+import desurv.losses as losses
+from desurv.desurv_torch import DeSurvTorch
+from nfg.nfg_api import NeuralFineGray
+
 
 class DeSurv(NeuralFineGray):
 

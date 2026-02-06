@@ -9,13 +9,14 @@ Features:
 - Proper handling of string columns in raw data
 """
 
+import warnings
+from typing import List, Optional, Tuple
+
 import numpy as np
 import pandas as pd
-from typing import Tuple, Optional, Union, List
-import warnings
 import torch
-from sklearn.preprocessing import OneHotEncoder
 from sklearn.decomposition import PCA
+from sklearn.preprocessing import OneHotEncoder
 
 try:
     from tabicl import TabICLClassifier

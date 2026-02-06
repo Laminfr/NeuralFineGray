@@ -44,7 +44,9 @@ from pandas_patch import pd
 This way, all files that use pandas (pd) automatically benefit from the fix.
 """
 import sys
+
 import pandas as _pd
+
 if not hasattr(_pd.Series, "iteritems"):
     _pd.Series.iteritems = _pd.Series.items
 _old_describe = _pd.DataFrame.describe

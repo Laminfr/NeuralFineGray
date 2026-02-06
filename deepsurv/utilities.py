@@ -2,18 +2,15 @@ import numpy as np
 import torch
 import torch.nn as nn
 import torch.optim as optim
-from torch.utils.data import TensorDataset, DataLoader
-from lifelines import KaplanMeierFitter
+from torch.utils.data import DataLoader, TensorDataset
 
 # Import the shared data loader
 from datasets.data_loader import load_and_preprocess_data
 
-
-# Import metrics from neuralfg repository
-import sys
-sys.path.insert(0, '/vol/miltank/users/sajb/Project/NeuralFineGray')
+# Import metrics
 from metrics.calibration import integrated_brier_score
 from metrics.discrimination import truncated_concordance_td
+from metrics.utils import estimate_survival_from_cox
 
 
 class DeepSurvModel(nn.Module):
@@ -107,34 +104,6 @@ def predict_risk_scores(model, X, device):
         X_tensor = torch.FloatTensor(X.values).to(device)
         risk_scores = model(X_tensor).squeeze().cpu().numpy()
     return risk_scores
-
-
-def estimate_survival_from_cox(risk_scores_train, risk_scores_test, t_train, e_train, time_grid):
-    """
-    Estimate survival probabilities using Breslow estimator.
-    S(t|x) = S_0(t) ^ exp(risk_score)
-    """
-    from lifelines import KaplanMeierFitter
-    
-    # Estimate baseline survival using Kaplan-Meier on training data
-    kmf = KaplanMeierFitter()
-    # For single event survival: event_observed=True when e_train > 0
-    kmf.fit(t_train, event_observed=(e_train > 0))
-    
-    # Get baseline survival at time grid points
-    baseline_surv = kmf.survival_function_at_times(time_grid).values
-    
-    # Clip risk scores to prevent overflow
-    risk_scores_clipped = np.clip(risk_scores_test, -10, 10)
-    
-    # Calculate survival probabilities for each sample
-    # S(t|x) = S_0(t) ^ exp(risk_score)
-    survival_probs = np.row_stack([
-        baseline_surv ** np.exp(risk)
-        for risk in risk_scores_clipped
-    ])
-    
-    return survival_probs
 
 
 def evaluate_deepsurv_model(model, device, X_train, X_val, t_train, t_val, e_train, e_val):

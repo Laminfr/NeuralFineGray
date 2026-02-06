@@ -149,9 +149,16 @@ logs/
 *.sbatch
 CompetingRisks/logs/
 
-# Results and models
-results/survival_stacking/
-results/tabicl_comparison/
+# Results - ignore everything except plots directories
+results/*
+!results/*/
+!results/*/*/
+!results/*/*/*/
+results/*/**
+!results/*/plots/
+!results/*/plots/**
+!results/*/*/plots/
+!results/*/*/plots/**
 
 # tabICL
 tabICL/

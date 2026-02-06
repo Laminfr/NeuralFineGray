@@ -1,7 +1,8 @@
-from torch.autograd import grad
 import numpy as np
-import torch.nn as nn
 import torch
+import torch.nn as nn
+from torch.autograd import grad
+
 
 # All of this as dependence
 class PositiveLinear(nn.Module):

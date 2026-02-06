@@ -5,8 +5,9 @@ These are helper functions that wrap the existing datasets and metrics modules
 for the specific needs of the competing risks benchmark.
 """
 
+from typing import Dict, List, Optional, Tuple
+
 import numpy as np
-from typing import List, Dict, Tuple, Optional
 from sklearn.model_selection import train_test_split
 
 
@@ -102,8 +103,8 @@ def evaluate_competing_risks_model(
     Returns:
         Dictionary with metrics for each risk
     """
-    from metrics.discrimination import truncated_concordance_td
     from metrics.calibration import integrated_brier_score
+    from metrics.discrimination import truncated_concordance_td
     
     results = {'c_index': {}, 'ibs': {}}
     

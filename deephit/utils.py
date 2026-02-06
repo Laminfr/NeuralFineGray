@@ -2,6 +2,7 @@ import torch
 import torchtuples as tt
 from pycox.preprocessing.label_transforms import LabTransDiscreteTime
 
+
 # Generalized transformer for competing risk
 class LabTransform(LabTransDiscreteTime):
     def transform(self, durations, events):

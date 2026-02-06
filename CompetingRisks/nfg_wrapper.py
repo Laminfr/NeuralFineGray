@@ -11,10 +11,10 @@ Key features:
 - Extracts embeddings for hybrid model (Phase 3)
 """
 
+from typing import Dict, List, Optional
+
 import numpy as np
 import torch
-from typing import Dict, Optional, Tuple, List
-import warnings
 
 from nfg.nfg_api import NeuralFineGray
 from nfg.nfg_torch import NeuralFineGrayTorch
@@ -342,6 +342,7 @@ class NFGCompetingRisks:
 if __name__ == '__main__':
     # Test the wrapper
     from datasets.datasets import load_dataset
+
     from .utils import split_data
     
     print("Testing NFGCompetingRisks...")

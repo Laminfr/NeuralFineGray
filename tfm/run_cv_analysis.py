@@ -11,22 +11,24 @@ This script orchestrates:
 Supported embedding methods:
 - tabicl: TabICL embeddings (512D)
 - tarte: TARTE embeddings
+- tabpfn: TabPFN embeddings
 
 Usage:
     python run_cv_analysis.py --method tabicl --dataset METABRIC
     python run_cv_analysis.py --method tarte --dataset PBC
+    python run_cv_analysis.py --method tabpfn --dataset SUPPORT
     python run_cv_analysis.py --method tabicl --dataset SUPPORT --n-iter 30
 """
 
-import os
-import sys
-import warnings
-import json
 import argparse
-import numpy as np
-from pathlib import Path
-from datetime import datetime
+import json
+import sys
 import traceback
+import warnings
+from datetime import datetime
+from pathlib import Path
+
+import numpy as np
 
 warnings.filterwarnings("ignore", category=UserWarning)
 warnings.filterwarnings("ignore", category=FutureWarning)
@@ -37,8 +39,13 @@ sys.path.insert(0, str(PROJECT_ROOT))
 
 from datasets.datasets import load_dataset
 from experiments.experiment import (
-    CoxExperiment, RSFExperiment, XGBoostExperiment,
-    DeepSurvExperiment, TabICLExperiment, TARTEExperiment
+    CoxPHExperiment,
+    DeepSurvExperiment,
+    RSFExperiment,
+    TabICLExperiment,
+    TabPFNExperiment,
+    TARTEExperiment,
+    XGBoostExperiment,
 )
 
 # =============================================================================
@@ -50,7 +57,8 @@ N_FOLDS = 5
 # Default iterations per method (can be overridden via CLI)
 DEFAULT_N_ITER = {
     'tabicl': 20,
-    'tarte': 50
+    'tarte': 50,
+    'tabpfn': 20
 }
 
 # Hyperparameter Grids (based on NFG paper)
@@ -99,7 +107,7 @@ LINEAR_MODELS = ['CoxPH']
 
 # Experiment classes mapping
 EXPERIMENT_CLASSES = {
-    'CoxPH': CoxExperiment,
+    'CoxPH': CoxPHExperiment,
     'RSF': RSFExperiment,
     'XGBoost': XGBoostExperiment,
     'DeepSurv': DeepSurvExperiment
@@ -108,7 +116,8 @@ EXPERIMENT_CLASSES = {
 # Embedding experiment classes
 EMBEDDING_EXPERIMENT_CLASSES = {
     'tabicl': TabICLExperiment,
-    'tarte': TARTEExperiment
+    'tarte': TARTEExperiment,
+    'tabpfn': TabPFNExperiment
 }
 
 # Modes to evaluate
@@ -132,8 +141,7 @@ def compute_metrics_at_quantiles(predictions, t, e, times):
         dict with metrics at q0.25, q0.50, q0.75
     """
     from metrics.calibration import integrated_brier_score as nfg_ibs
-    from metrics.discrimination import truncated_concordance_td as nfg_cindex
-    
+
     # Get event times for quantile calculation
     event_times = t[e > 0]
     quantiles = np.percentile(event_times, [25, 50, 75])
@@ -278,6 +286,8 @@ def run_experiment(model_name, mode, embedding_method, dataset='METABRIC',
                 exp_kwargs['tabicl_mode'] = mode
             elif embedding_method == 'tarte':
                 exp_kwargs['tarte_mode'] = mode
+            elif embedding_method == 'tabpfn':
+                exp_kwargs['tabpfn_mode'] = mode
             
             exp = EmbeddingExperimentClass(**exp_kwargs)
             
@@ -389,19 +399,20 @@ if __name__ == "__main__":
 Examples:
     python run_cv_analysis.py --method tabicl --dataset METABRIC
     python run_cv_analysis.py --method tarte --dataset PBC
+    python run_cv_analysis.py --method tabpfn --dataset SUPPORT
     python run_cv_analysis.py --method tabicl --dataset SUPPORT --n-iter 30
     
 This replaces the separate tfm/TabICL/run_cv_analysis.py and tfm/TARTE/run_cv_analysis.py scripts.
         """
     )
     parser.add_argument('--method', type=str, required=True,
-                        choices=['tabicl', 'tarte'],
+                        choices=['tabicl', 'tarte', 'tabpfn'],
                         help='Embedding method to use')
     parser.add_argument('--dataset', type=str, default='METABRIC',
                         choices=['METABRIC', 'PBC', 'SUPPORT', 'GBSG', 'SEER'],
                         help='Dataset to run analysis on (default: METABRIC)')
     parser.add_argument('--n-iter', type=int, default=None,
-                        help='Number of random search iterations (default: 20 for tabicl, 50 for tarte)')
+                        help='Number of random search iterations (default: 20 for tabicl/tabpfn, 50 for tarte)')
     args = parser.parse_args()
     
     main(embedding_method=args.method, dataset=args.dataset, n_iter=args.n_iter)

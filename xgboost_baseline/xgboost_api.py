@@ -1,12 +1,11 @@
 import numpy as np
-from pandas_patch import pd
 import xgboost as xgb
 from lifelines import KaplanMeierFitter
 
 from nfg.nfg_api import NeuralFineGray
-from xgb_survival.utilities import train_xgboost_model, evaluate_xgboost_model, summary_output
-from metrics.calibration import integrated_brier_score as nfg_integrated_brier
-from metrics.discrimination import truncated_concordance_td as nfg_cindex_td
+from pandas_patch import pd
+from xgb_survival.utilities import evaluate_xgboost_model, summary_output
+
 
 class XGBoostFG(NeuralFineGray):
 
@@ -161,8 +160,12 @@ class XGBoostFG(NeuralFineGray):
         
         # Apply proportional hazards
         # S(t|x) = S0(t)^exp(risk_score)
+        # Clip risk scores to prevent overflow in exp()
+        # exp(700) ≈ 1e304 which is near float64 max
+        risk_scores_clipped = np.clip(risk_scores, -700, 700)
+        
         surv_probs = np.zeros((len(X), len(times)))
-        for i, risk in enumerate(risk_scores):
+        for i, risk in enumerate(risk_scores_clipped):
             surv_probs[i, :] = S0 ** np.exp(risk)
                 
         return surv_probs
@@ -172,12 +175,5 @@ class XGBoostFG(NeuralFineGray):
         return 1.0 - self.predict_survival(X, times)
 
 
-# Import shared utility function
-from xgb_survival.utilities import wrap_np_to_pandas
-
-def convert_cpu_numpy(tensor):
-    if hasattr(tensor, "detach"):
-        tensor = tensor.detach().cpu().numpy()
-    else:
-        tensor = np.asarray(tensor)
-    return tensor
+# Import shared utility functions
+from metrics.utils import convert_cpu_numpy
